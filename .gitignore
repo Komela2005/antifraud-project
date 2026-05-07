@@ -1,0 +1,55 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+eggs/
+sdist/
+*.egg
+*.whl
+
+venv/
+.venv/
+env/
+.env
+
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+.streamlit/secrets.toml
+# secrets.toml.example можно оставить как шаблон
+
+# Сгенерированные временные подвыборки (Streamlit-кэш)
+data/temp/
+*.sample.csv
+
+*.db
+*.sqlite
+*.sqlite3
+
+logs/
+*.log
+reports/
+# Кроме шаблонов отчётов, если они есть
+!reports/template/
+
+docker-compose.override.yml
+Dockerfile.local
+.dockerignore  # сам файл можно коммитить
+
+*.bak
+*.tmp
+*.swp
+.cache/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+coverage.xml
+htmlcov/
