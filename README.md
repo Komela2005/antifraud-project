@@ -94,13 +94,13 @@ streamlit run app.py
 # Команда и роли
 
 Участник
-Милослава Рогушина Product Owner
-Тавабилова ML Engineer (LR, RF, метрики)
-Зайцева ML Engineer (CatBoost, SHAP)
-Сахарова Backend Developer (генератор данных)
-Денисенко Backend Developer (метрики, интеграция)
-Печерица Frontend / UI (Streamlit)
-Елизавета Смирнова DevOps (CI/CD, деплой)
+- Милослава Рогушина Product Owner
+- Тавабилова ML Engineer (LR, RF, метрики)
+- Зайцева ML Engineer (CatBoost, SHAP)
+- Сахарова Backend Developer (генератор данных)
+- Денисенко Backend Developer (метрики, интеграция)
+- Печерица Frontend / UI (Streamlit)
+- Елизавета Смирнова DevOps (CI/CD, деплой)
 
 Каждый участник отвечает за качество всего кода через обязательные code review и парное программирование в сложных задачах.
 
