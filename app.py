@@ -13,10 +13,10 @@ st.title("Fraud Detection System")
 # SIDEBAR
 # -----------------------------
 
-st.sidebar.header("Settings")
+st.sidebar.header("Настройки")
 
 sample_size = st.sidebar.slider(
-    "Sample size",
+    "Выборка",
     min_value=100,
     max_value=10000,
     value=1000,
@@ -24,7 +24,7 @@ sample_size = st.sidebar.slider(
 )
 
 selected_model = st.sidebar.selectbox(
-    "Choose model",
+    "Модель",
     [
         "logistic_regression",
         "random_forest_v1",
@@ -38,8 +38,8 @@ compare_button = st.sidebar.button("Сравнить")
 # SHOW SETTINGS
 # -----------------------------
 
-st.write(f"Selected sample size: {sample_size}")
-st.write(f"Selected model: {selected_model}")
+st.write(f"Размер выборки: {sample_size}")
+st.write(f"Модель: {selected_model}")
 
 # -----------------------------
 # LOAD MODEL
