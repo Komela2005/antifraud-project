@@ -2,31 +2,14 @@
 # ИМПОРТ БИБЛИОТЕК
 # =====================================================
 
-# logging:
-# используется для записи ошибок в app.log
 import logging
-
-# pathlib.Path:
-# удобная работа с путями к файлам
 from pathlib import Path
 
-# joblib:
-# загрузка .pkl моделей sklearn
 import joblib
-
-# pandas:
-# работа с таблицами и DataFrame
 import pandas as pd
-
-# plotly:
-# интерактивные графики
 import plotly.express as px
-
-# streamlit:
-# frontend framework для ML dashboard
 import streamlit as st
 
-# Метрики качества классификации
 from sklearn.metrics import (
     precision_score,
     recall_score,
@@ -37,11 +20,6 @@ from sklearn.metrics import (
 # ИМПОРТ ГЕНЕРАТОРА ДАННЫХ
 # =====================================================
 
-# generate_transactions:
-# генерирует synthetic fraud dataset
-#
-# get_expected_columns:
-# возвращает список ожидаемых признаков
 from data_generator.generator import (
     generate_transactions,
     get_expected_columns
@@ -51,22 +29,15 @@ from data_generator.generator import (
 # ИМПОРТ STRESS SCENARIOS
 # =====================================================
 
-# apply_stress:
-# применяет stress scenario к датасету
-#
-# get_available_scenarios:
-# возвращает список доступных stress-сценариев
 from data_generator.stress_scenarios import (
     apply_stress,
     get_available_scenarios
 )
 
 # =====================================================
-# НАСТРОЙКА ЛОГИРОВАНИЯ
+# ЛОГИРОВАНИЕ
 # =====================================================
 
-# Все ошибки будут записываться:
-# app.log
 logging.basicConfig(
     filename="app.log",
     level=logging.ERROR,
@@ -74,35 +45,23 @@ logging.basicConfig(
 )
 
 # =====================================================
-# НАСТРОЙКА СТРАНИЦЫ STREAMLIT
+# НАСТРОЙКА СТРАНИЦЫ
 # =====================================================
 
-# page_title:
-# название вкладки браузера
-#
-# layout="wide":
-# широкий режим страницы
 st.set_page_config(
     page_title="Система антифрода",
     layout="wide"
 )
 
-# Главный заголовок страницы
 st.title("Система антифрода")
 
 # =====================================================
 # SIDEBAR
 # =====================================================
 
-# Боковая панель с настройками
 st.sidebar.header("Настройки")
 
-# =====================================================
-# SLIDER: размер выборки
-# =====================================================
-
-# Пользователь выбирает:
-# сколько строк будет сгенерировано
+# Размер выборки
 sample_size = st.sidebar.slider(
     "Размер выборки",
     min_value=100,
@@ -111,12 +70,7 @@ sample_size = st.sidebar.slider(
     step=100
 )
 
-# =====================================================
-# SELECTBOX: выбор модели
-# =====================================================
-
-# Пользователь выбирает:
-# какую ML-модель использовать
+# Выбор модели
 selected_model = st.sidebar.selectbox(
     "Выберите модель",
     [
@@ -126,12 +80,7 @@ selected_model = st.sidebar.selectbox(
     ]
 )
 
-# =====================================================
-# SLIDER: threshold
-# =====================================================
-
-# Порог классификации:
-# влияет на precision/recall/F1
+# Threshold
 threshold = st.sidebar.slider(
     "Порог классификации",
     min_value=0.1,
@@ -140,108 +89,139 @@ threshold = st.sidebar.slider(
     step=0.05
 )
 
-# =====================================================
-# SELECTBOX: stress scenario
-# =====================================================
+# Stress scenario
+available_scenarios = (
+    get_available_scenarios()
+)
 
-# Получаем список stress-сценариев
-available_scenarios = get_available_scenarios()
-
-# Пользователь выбирает:
-# какой стресс-сценарий применить
 selected_scenario = st.sidebar.selectbox(
     "Стресс-сценарий",
     available_scenarios
 )
 
-# =====================================================
-# BUTTON
-# =====================================================
+# Upload CSV
+uploaded_file = st.file_uploader(
+    "Загрузите CSV файл",
+    type=["csv"]
+)
 
-# Кнопка запуска анализа
+# Кнопка запуска
 compare_button = st.sidebar.button(
     "Запустить анализ"
 )
 
 # =====================================================
-# ОТОБРАЖЕНИЕ ВЫБРАННЫХ ПАРАМЕТРОВ
+# ИНФОРМАЦИЯ О ПАРАМЕТРАХ
 # =====================================================
 
 st.write(f"Размер выборки: {sample_size}")
-st.write(f"Выбранная модель: {selected_model}")
+st.write(f"Модель: {selected_model}")
 st.write(f"Порог: {threshold}")
-st.write(f"Стресс-сценарий: {selected_scenario}")
+st.write(f"Stress scenario: {selected_scenario}")
 
 # =====================================================
 # ОСНОВНАЯ ЛОГИКА
 # =====================================================
 
-# Код выполняется:
-# только после нажатия кнопки
 if compare_button:
 
     try:
 
         # =================================================
-        # ГЕНЕРАЦИЯ CLASSIC DATASET
+        # ЗАГРУЗКА CSV ИЛИ ГЕНЕРАЦИЯ ДАННЫХ
         # =================================================
 
-        # Создаем synthetic dataset
-        classic_df = generate_transactions(
-            sample_size
-        )
+        if uploaded_file is not None:
+
+            if not uploaded_file.name.endswith(
+                ".csv"
+            ):
+
+                st.error(
+                    "Некорректное расширение файла"
+                )
+
+                st.stop()
+
+            classic_df = pd.read_csv(
+                uploaded_file
+            )
+
+        else:
+
+            classic_df = (
+                generate_transactions(
+                    sample_size
+                )
+            )
 
         # =================================================
-        # ГЕНЕРАЦИЯ STRESS DATASET
+        # СТРЕСС-СЦЕНАРИЙ
         # =================================================
 
-        # Создаем стресс-версию датасета
         stress_df = apply_stress(
             classic_df.copy(),
             selected_scenario
         )
 
         # =================================================
-        # ПОКАЗЫВАЕМ DATASET
+        # ОТОБРАЖЕНИЕ DATASET
         # =================================================
 
-        st.subheader("Сгенерированные данные")
+        st.subheader(
+            "Сгенерированные данные"
+        )
 
-        # head():
-        # первые 5 строк таблицы
         st.dataframe(
             classic_df.head()
         )
 
         # =================================================
-        # ВАЛИДАЦИЯ DATASET
+        # ВАЛИДАЦИЯ КОЛОНОК
         # =================================================
 
-        # Получаем ожидаемые колонки
         required_columns = (
             get_expected_columns()
         )
 
-        # Добавляем target column
         required_columns.append(
             "is_fraud"
         )
 
-        # Ищем отсутствующие колонки
         missing_columns = [
             col
             for col in required_columns
             if col not in classic_df.columns
         ]
 
-        # Если колонки отсутствуют
         if missing_columns:
 
             st.error(
                 f"Отсутствуют колонки: {missing_columns}"
             )
 
-            # Останавливаем выполнение
+            st.stop()
+
+        # =================================================
+        # ВАЛИДАЦИЯ ТИПОВ
+        # =================================================
+
+        wrong_types = []
+
+        for col in get_expected_columns():
+
+            if not pd.api.types.is_numeric_dtype(
+                classic_df[col]
+            ):
+
+                wrong_types.append(col)
+
+        if wrong_types:
+
+            st.error(
+                f"Неверный тип данных: {wrong_types}"
+            )
+
             st.stop()
 
         # =================================================
@@ -252,8 +232,6 @@ if compare_button:
             "Редактирование датасета"
         )
 
-        # Пользователь может:
-        # менять ячейки прямо в UI
         edited_df = st.data_editor(
             classic_df
         )
@@ -262,37 +240,30 @@ if compare_button:
         # FEATURES / TARGET
         # =================================================
 
-        # X:
-        # признаки модели
         X_classic = edited_df.drop(
             columns=["is_fraud"]
         )
 
-        # y:
-        # target column
         y_classic = edited_df["is_fraud"]
 
-        # Stress features
         X_stress = stress_df.drop(
             columns=["is_fraud"]
         )
 
-        # Stress target
         y_stress = stress_df["is_fraud"]
 
         # =================================================
         # ЗАГРУЗКА МОДЕЛИ
         # =================================================
 
-        # Формируем путь:
-        # models/random_forest_v1.pkl
         model_path = (
             Path("models") /
             f"{selected_model}.pkl"
         )
 
-        # Загружаем модель
-        model = joblib.load(model_path)
+        model = joblib.load(
+            model_path
+        )
 
         st.success(
             f"Модель загружена: {selected_model}"
@@ -302,25 +273,23 @@ if compare_button:
         # CLASSIC PREDICTIONS
         # =================================================
 
-        # Проверяем:
-        # умеет ли модель predict_proba
-        if hasattr(model, "predict_proba"):
+        if hasattr(
+            model,
+            "predict_proba"
+        ):
 
-            # Получаем вероятности fraud
             classic_proba = (
                 model.predict_proba(
                     X_classic
                 )[:, 1]
             )
 
-            # Применяем threshold
             classic_pred = (
                 classic_proba >= threshold
             ).astype(int)
 
         else:
 
-            # Если predict_proba нет
             classic_pred = model.predict(
                 X_classic
             )
@@ -331,7 +300,10 @@ if compare_button:
         # STRESS PREDICTIONS
         # =================================================
 
-        if hasattr(model, "predict_proba"):
+        if hasattr(
+            model,
+            "predict_proba"
+        ):
 
             stress_proba = (
                 model.predict_proba(
@@ -352,7 +324,7 @@ if compare_button:
             stress_proba = stress_pred
 
         # =================================================
-        # ВЫЧИСЛЕНИЕ METRICS
+        # МЕТРИКИ CLASSIC
         # =================================================
 
         classic_precision = precision_score(
@@ -372,6 +344,10 @@ if compare_button:
             classic_pred,
             zero_division=0
         )
+
+        # =================================================
+        # МЕТРИКИ STRESS
+        # =================================================
 
         stress_precision = precision_score(
             y_stress,
@@ -420,18 +396,124 @@ if compare_button:
             "Таблица метрик"
         )
 
-        st.dataframe(metrics_df)
+        st.dataframe(
+            metrics_df
+        )
+
+        # =================================================
+        # ГРАФИК THRESHOLD
+        # =================================================
+
+        if hasattr(
+            model,
+            "predict_proba"
+        ):
+
+            threshold_values = []
+            precision_values = []
+            recall_values = []
+            f1_values = []
+
+            for t in [
+                0.1,
+                0.2,
+                0.3,
+                0.4,
+                0.5,
+                0.6,
+                0.7,
+                0.8,
+                0.9
+            ]:
+
+                temp_pred = (
+                    classic_proba >= t
+                ).astype(int)
+
+                threshold_values.append(t)
+
+                precision_values.append(
+                    precision_score(
+                        y_classic,
+                        temp_pred,
+                        zero_division=0
+                    )
+                )
+
+                recall_values.append(
+                    recall_score(
+                        y_classic,
+                        temp_pred,
+                        zero_division=0
+                    )
+                )
+
+                f1_values.append(
+                    f1_score(
+                        y_classic,
+                        temp_pred,
+                        zero_division=0
+                    )
+                )
+
+            threshold_df = pd.DataFrame({
+
+                "Порог": threshold_values,
+                "Precision": precision_values,
+                "Recall": recall_values,
+                "F1": f1_values
+            })
+
+            st.subheader(
+                "Метрика vs Порог"
+            )
+
+            fig_threshold = px.line(
+                threshold_df,
+                x="Порог",
+                y=[
+                    "Precision",
+                    "Recall",
+                    "F1"
+                ]
+            )
+
+            st.plotly_chart(
+                fig_threshold,
+                use_container_width=True
+            )
 
         # =================================================
         # BAR CHART
         # =================================================
+
+        comparison_df = pd.DataFrame({
+
+            "Метрика": [
+                "Precision",
+                "Recall",
+                "F1"
+            ],
+
+            "Классический режим": [
+                classic_precision,
+                classic_recall,
+                classic_f1
+            ],
+
+            "Стресс-режим": [
+                stress_precision,
+                stress_recall,
+                stress_f1
+            ]
+        })
 
         st.subheader(
             "Сравнение режимов"
         )
 
         fig_bar = px.bar(
-            metrics_df,
+            comparison_df,
             x="Метрика",
             y=[
                 "Классический режим",
@@ -445,8 +527,44 @@ if compare_button:
             use_container_width=True
         )
 
+        # =================================================
+        # ДЕТАЛЬНЫЙ АНАЛИЗ
+        # =================================================
+
+        if st.button(
+            "Детальный анализ"
+        ):
+
+            st.subheader(
+                "Подробный анализ модели"
+            )
+
+            probability_df = pd.DataFrame({
+
+                "Вероятность мошенничества":
+                    classic_proba
+            })
+
+            st.dataframe(
+                probability_df.head(20)
+            )
+
+            st.subheader(
+                "Распределение вероятностей"
+            )
+
+            fig_hist = px.histogram(
+                probability_df,
+                x="Вероятность мошенничества"
+            )
+
+            st.plotly_chart(
+                fig_hist,
+                use_container_width=True
+            )
+
     # =====================================================
-    # FILE NOT FOUND
+    # ОШИБКА ФАЙЛА МОДЕЛИ
     # =====================================================
 
     except FileNotFoundError:
@@ -465,10 +583,8 @@ if compare_button:
 
     except Exception as e:
 
-        # Записываем ошибку в app.log
         logging.error(str(e))
 
-        # Показываем ошибку пользователю
         st.error(
             f"Ошибка приложения: {e}"
         )
