@@ -67,7 +67,8 @@ sample_size = st.sidebar.slider(
     min_value=100,
     max_value=10000,
     value=1000,
-    step=100
+    step=100,
+    help="Количество генерируемых транзакций"
 )
 
 # Выбор модели
@@ -77,7 +78,8 @@ selected_model = st.sidebar.selectbox(
         "logistic_regression",
         "random_forest_v1",
         "random_forest_v2"
-    ]
+    ],
+    help=" На данный момент доступны логистическая регрессия и две версии случайного леса"
 )
 
 # Threshold
@@ -86,7 +88,8 @@ threshold = st.sidebar.slider(
     min_value=0.1,
     max_value=0.9,
     value=0.5,
-    step=0.05
+    step=0.05,
+    help="Вероятность выше этого порога считается мошенничеством"
 )
 
 # Stress scenario
@@ -96,18 +99,21 @@ available_scenarios = (
 
 selected_scenario = st.sidebar.selectbox(
     "Стресс-сценарий",
-    available_scenarios
+    available_scenarios,
+    help="Имитация аномального поведения мошенников"
 )
 
 # Upload CSV
 uploaded_file = st.file_uploader(
     "Загрузите CSV файл",
-    type=["csv"]
+    type=["csv"],
+    help="Файл должен содержать колонки, соответствующие обучающим данным и is_fraud"
 )
 
 # Кнопка запуска
 compare_button = st.sidebar.button(
-    "Запустить анализ"
+    "Запустить анализ",
+    help="Нажмите для расчёта метрик на выбранных данных"
 )
 
 # =====================================================
@@ -124,6 +130,7 @@ st.write(f"Stress scenario: {selected_scenario}")
 # =====================================================
 
 if compare_button:
+    st.toast(f"Запуск анализа со сценарием: {selected_scenario}")
 
     try:
 
@@ -148,12 +155,12 @@ if compare_button:
             )
 
         else:
-
-            classic_df = (
-                generate_transactions(
-                    sample_size
-                )
-            )
+            with st.spinner("Генерируем синтетические данные, пожалуйста, подождите :)"):
+            	classic_df = (
+                	generate_transactions(
+                    	sample_size
+                	)
+            	)
 
         # =================================================
         # СТРЕСС-СЦЕНАРИЙ
