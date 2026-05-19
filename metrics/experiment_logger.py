@@ -64,35 +64,3 @@ def log_experiment(
     return exp_id
 
 
-def log_comparison(
-    sample_size: int,
-    stress_scenario: str,
-    cost_fn: int,
-    all_results: dict
-) -> int:
-    """
-    Упрощённая версия для логирования одного сравнения
-    
-
-    Параметры:
-    - sample_size: размер выборки
-    - stress_scenario: стресс-сценарий
-    - cost_fp: стоимость FP
-    - cost_fn: стоимость FN
-    - all_results: результаты evaluate_all_models()
-    
-    Возвращает:
-    - experiment_id: ID созданного эксперимента
-    """
-    experiment_name = f"Comparison_{sample_size}_{stress_scenario}"
-    description = f"Sample size: {sample_size}, Scenario: {stress_scenario}, FP cost: {cost_fp}, FN cost: {cost_fn}"
-    
-    params = {
-
-        'sample_size': sample_size,
-        'stress_scenario': stress_scenario,
-        'cost_fp': cost_fp,
-        'cost_fn': cost_fn
-    }
-    
-    return log_experiment(experiment_name, params, all_results, description)
