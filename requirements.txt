@@ -8,3 +8,4 @@ plotly==5.15.0
 pytest==7.4.0
 imbalanced-learn==0.10.1
 shap==0.42.1
+faker>=30.0.0
