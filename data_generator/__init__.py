@@ -1,2 +1,12 @@
-from .generator import generate_transactions, generate_fraud_subset, get_expected_columns, generate_custom_fraud_distribution
+"""
+Пакет для генерации синтетических данных и стресс-сценариев
+"""
+from .generator import generate_fraud_dataset, generate_fraud_subset, get_expected_columns
 from .stress_scenarios import apply_stress
+
+__all__ = [
+    'generate_fraud_dataset', 
+    'generate_fraud_subset',
+    'get_expected_columns',
+    'apply_stress'
+]
