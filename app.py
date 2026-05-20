@@ -1,3 +1,7 @@
+# =====================================================
+# ИМПОРТ БИБЛИОТЕК
+# =====================================================
+
 import logging
 from pathlib import Path
 
@@ -5,15 +9,15 @@ import joblib
 import pandas as pd
 import plotly.express as px
 import streamlit as st
-
 from sklearn.metrics import (
     precision_score,
     recall_score,
-    f1_score
+    f1_score,
+    confusion_matrix
 )
 
 # =====================================================
-# ИМПОРТ ГЕНЕРАТОРА ДАННЫХ (исправлено)
+# ИМПОРТ ГЕНЕРАТОРА ДАННЫХ
 # =====================================================
 
 from data_generator.generator import (
@@ -41,6 +45,16 @@ logging.basicConfig(
 )
 
 # =====================================================
+# ФУНКЦИЯ РАСЧЁТА БИЗНЕС-СТОИМОСТИ
+# =====================================================
+
+def calculate_business_cost(y_true, y_pred, fp_weight, fn_weight):
+    """Рассчитывает бизнес-стоимость ошибок классификации"""
+    tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
+    total_cost = fp * fp_weight + fn * fn_weight
+    return total_cost
+
+# =====================================================
 # НАСТРОЙКА СТРАНИЦЫ
 # =====================================================
 
@@ -57,7 +71,7 @@ st.title("Система антифрода")
 
 st.sidebar.header("Настройки")
 
-# Размер выборки (ограничение от 100 до 2000, как в generate_fraud_subset)
+# Размер выборки
 sample_size = st.sidebar.slider(
     "Размер выборки",
     min_value=100,
@@ -88,6 +102,28 @@ fraud_ratio = st.sidebar.slider(
     help="Процент мошеннических транзакций в данных"
 )
 
+# Cost matrix веса
+st.sidebar.markdown("---")
+st.sidebar.subheader("Стоимость ошибок (Cost Matrix)")
+
+fp_weight = st.sidebar.slider(
+    "Стоимость False Positive (ложная тревога)",
+    min_value=1,
+    max_value=100,
+    value=1,
+    step=1,
+    help="Штраф за блокировку обычного клиента"
+)
+
+fn_weight = st.sidebar.slider(
+    "Стоимость False Negative (пропущенный фрод)",
+    min_value=1,
+    max_value=100,
+    value=10,
+    step=1,
+    help="Штраф за пропуск мошеннической транзакции"
+)
+
 # Stress scenario
 available_scenarios = get_available_scenarios()
 
@@ -97,22 +133,35 @@ selected_scenario = st.sidebar.selectbox(
     help="Имитация аномального поведения мошенников"
 )
 
-# Upload CSV
-uploaded_file = st.file_uploader(
-    "Загрузите CSV файл",
-    type=["csv"],
-    help="Файл должен содержать колонки, соответствующие обучающим данным и is_fraud"
+# =====================================================
+# ВЫБОР МОДЕЛЕЙ (мультиселект)
+# =====================================================
+
+st.sidebar.markdown("---")
+st.sidebar.subheader("Выбор моделей для сравнения")
+
+all_models = [
+    "Logistic Regression",
+    "Random Forest v1",
+    "Random Forest v2",
+    "CatBoost v1",
+    "CatBoost v2",
+    "Isolation Forest"
+]
+
+selected_models = st.sidebar.multiselect(
+    "Модели для сравнения (можно выбрать несколько)",
+    options=all_models,
+    default=all_models,
+    help="Выберите одну или несколько моделей для сравнения"
 )
 
-# Информация о моделях
-st.sidebar.markdown("---")
-st.sidebar.markdown("### Доступные модели")
-st.sidebar.caption("Logistic Regression (450k)")
-st.sidebar.caption("Random Forest v1 (450k)")
-st.sidebar.caption("Random Forest v2 (450k)")
-st.sidebar.caption("CatBoost v1 (450k)")
-st.sidebar.caption("CatBoost v2 (450k)")
-st.sidebar.caption("Isolation Forest (450k)")
+# Upload CSV (опционально, если не загружен - используем генерацию)
+uploaded_file = st.file_uploader(
+    "Загрузите CSV файл (опционально)",
+    type=["csv"],
+    help="Если не загружать, будут сгенерированы синтетические данные"
+)
 
 # Кнопка запуска
 compare_button = st.sidebar.button(
@@ -129,12 +178,9 @@ def load_all_models():
     """Загружает все 6 моделей, обученных на 450k данных"""
     models = {}
     
-    # Модели из папки 450k_models
     models['Logistic Regression'] = joblib.load('models/450k_models/logistic_regression_450k.pkl')
     models['Random Forest v1'] = joblib.load('models/450k_models/random_forest_v1_450k.pkl')
     models['Random Forest v2'] = joblib.load('models/450k_models/random_forest_v2_450k.pkl')
-    
-    # Модели из папки advanced_models
     models['CatBoost v1'] = joblib.load('models/advanced_models/catboost_v1.pkl')
     models['CatBoost v2'] = joblib.load('models/advanced_models/catboost_v2.pkl')
     models['Isolation Forest'] = joblib.load('models/advanced_models/isolation_forest.pkl')
@@ -158,9 +204,17 @@ if compare_button:
                 st.stop()
             classic_df = pd.read_csv(uploaded_file)
             st.success(f"Загружен файл: {uploaded_file.name}")
+            
+            # ВАЛИДАЦИЯ КОЛОНОК ДЛЯ ЗАГРУЖЕННОГО ФАЙЛА
+            required_columns = get_expected_columns() + ['is_fraud']
+            missing_columns = [col for col in required_columns if col not in classic_df.columns]
+            
+            if missing_columns:
+                st.error(f"Отсутствуют колонки в загруженном файле: {missing_columns}")
+                st.info("Используйте синтетическую генерацию или дополните CSV недостающими колонками")
+                st.stop()
         else:
-            with st.spinner("Генерируем синтетические данные, пожалуйста, подождите..."):
-                # Используем generate_fraud_subset вместо generate_transactions
+            with st.spinner("Генерируем синтетические данные..."):
                 classic_df = generate_fraud_subset(
                     subset_size=sample_size,
                     full_size=2000,
@@ -169,7 +223,6 @@ if compare_button:
                     random_state=42,
                     use_stratification=True
                 )
-                # generate_fraud_subset возвращает DataFrame с колонкой is_fraud
 
         # =================================================
         # СТРЕСС-СЦЕНАРИЙ
@@ -179,24 +232,15 @@ if compare_button:
         # =================================================
         # ОТОБРАЖЕНИЕ DATASET
         # =================================================
-        st.subheader("Данные")
+        st.subheader("Сгенерированные данные")
         st.dataframe(classic_df.head(), use_container_width=True)
-
-        # =================================================
-        # ВАЛИДАЦИЯ КОЛОНОК
-        # =================================================
-        required_columns = get_expected_columns() + ['is_fraud']
-        missing_columns = [col for col in required_columns if col not in classic_df.columns]
-
-        if missing_columns:
-            st.error(f"Отсутствуют колонки: {missing_columns}")
-            st.stop()
 
         # =================================================
         # ВАЛИДАЦИЯ ТИПОВ
         # =================================================
+        feature_cols = get_expected_columns()
         wrong_types = []
-        for col in get_expected_columns():
+        for col in feature_cols:
             if col in classic_df.columns and not pd.api.types.is_numeric_dtype(classic_df[col]):
                 wrong_types.append(col)
 
@@ -213,7 +257,6 @@ if compare_button:
         # =================================================
         # FEATURES / TARGET
         # =================================================
-        feature_cols = get_expected_columns()
         X_classic = edited_df[feature_cols]
         y_classic = edited_df["is_fraud"]
         X_stress = stress_df[feature_cols]
@@ -222,11 +265,15 @@ if compare_button:
         # =================================================
         # ЗАГРУЗКА ВСЕХ 6 МОДЕЛЕЙ
         # =================================================
-        models = load_all_models()
-        st.success(f"Загружено {len(models)} моделей")
+        all_models_dict = load_all_models()
+        
+        # Фильтруем только выбранные модели
+        models = {name: all_models_dict[name] for name in selected_models if name in all_models_dict}
+        
+        st.success(f"Загружено {len(models)} моделей: {', '.join(models.keys())}")
 
         # =================================================
-        # РАСЧЁТ МЕТРИК ДЛЯ ВСЕХ МОДЕЛЕЙ
+        # РАСЧЁТ МЕТРИК ДЛЯ ВЫБРАННЫХ МОДЕЛЕЙ
         # =================================================
         results_classic = []
         results_stress = []
@@ -246,12 +293,17 @@ if compare_button:
             else:
                 stress_pred = model.predict(X_stress)
             
+            # Бизнес-стоимость
+            business_cost_classic = calculate_business_cost(y_classic, classic_pred, fp_weight, fn_weight)
+            business_cost_stress = calculate_business_cost(y_stress, stress_pred, fp_weight, fn_weight)
+            
             # Метрики classic
             results_classic.append({
                 "Модель": name,
                 "Precision": round(precision_score(y_classic, classic_pred, zero_division=0), 4),
                 "Recall": round(recall_score(y_classic, classic_pred, zero_division=0), 4),
-                "F1": round(f1_score(y_classic, classic_pred, zero_division=0), 4)
+                "F1": round(f1_score(y_classic, classic_pred, zero_division=0), 4),
+                "Business Cost": business_cost_classic
             })
             
             # Метрики stress
@@ -259,7 +311,8 @@ if compare_button:
                 "Модель": name,
                 "Precision": round(precision_score(y_stress, stress_pred, zero_division=0), 4),
                 "Recall": round(recall_score(y_stress, stress_pred, zero_division=0), 4),
-                "F1": round(f1_score(y_stress, stress_pred, zero_division=0), 4)
+                "F1": round(f1_score(y_stress, stress_pred, zero_division=0), 4),
+                "Business Cost": business_cost_stress
             })
 
         # =================================================
@@ -272,6 +325,10 @@ if compare_button:
         for col in ['Precision', 'Recall', 'F1']:
             df_classic[col] = df_classic[col].apply(lambda x: f"{x*100:.1f}%")
             df_stress[col] = df_stress[col].apply(lambda x: f"{x*100:.1f}%")
+        
+        # Business Cost оставляем как число
+        df_classic['Business Cost'] = df_classic['Business Cost'].astype(int)
+        df_stress['Business Cost'] = df_stress['Business Cost'].astype(int)
 
         # Таблица 1: Классический режим
         st.subheader("Таблица метрик (классический режим)")
@@ -294,9 +351,9 @@ if compare_button:
             
             drop_data.append({
                 "Модель": row['Модель'],
-                "Просадка Precision": "-",
-                "Просадка Recall": "-",
-                "Просадка F1": f"{drop_f1}%"
+                "Просадка F1": f"{drop_f1}%",
+                "Classic Business Cost": df_classic.iloc[i]['Business Cost'],
+                "Stress Business Cost": df_stress.iloc[i]['Business Cost']
             })
 
         df_drop = pd.DataFrame(drop_data)
