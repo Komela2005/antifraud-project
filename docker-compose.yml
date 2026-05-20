@@ -8,8 +8,5 @@ services:
     ports:
       - "8501:8501"
     volumes:
-      - sqlite_data:/app/database
+      - ./database:/app/database
     restart: unless-stopped
-
-volumes:
-  sqlite_data:
