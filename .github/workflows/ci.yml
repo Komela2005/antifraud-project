@@ -1,0 +1,54 @@
+name: CI
+
+# Запускать при пушах и Pull Request в main и develop
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Клонировать репозиторий (с LFS-файлами)
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      # 2. Установить Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      # 3. Установить зависимости проекта
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # 4. Установить pre-commit (нужен для запуска хуков в CI)
+      - name: Install pre-commit
+        run: pip install pre-commit
+
+      # 5. Запустить все pre-commit хуки на всех файлах
+      - name: Run pre-commit hooks
+        run: pre-commit run --all-files
+
+      # 6. Запустить тесты (если есть)
+      #   Если тестов может не быть - тогда этот шаг просто пропустится без ошибок
+      - name: Run tests
+        run: |
+          if [ -d tests ] || [ -f pytest.ini ]; then
+            pytest
+          else
+            echo "No tests found, skipping."
+          fi
+
+      # 7. Проверить, что Docker образ собирается
+      #    Это гарантирует, что Dockerfile корректен
+      - name: Check Docker build
+        run: docker build -t antifraud-platform .
