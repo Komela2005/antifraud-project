@@ -795,4 +795,4 @@ if compare_button:
 
         st.error(
             f"Ошибка приложения: {e}"
-        )        st.error(f"Ошибка приложения: {e}")
+        )       
