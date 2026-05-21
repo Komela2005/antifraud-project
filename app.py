@@ -4,7 +4,7 @@ import joblib
 import pandas as pd
 import plotly.express as px
 import streamlit as st
-
+from database import init_db, create_experiment, save_model_results, finish_experiment
 from sklearn.metrics import (
     precision_score,
     recall_score,
@@ -39,7 +39,16 @@ logging.basicConfig(
     level=logging.ERROR,
     format="%(asctime)s %(levelname)s %(message)s"
 )
-
+@st.cache_resource
+def load_all_models():
+    models = {}
+    models["Logistic Regression"] = joblib.load("models/450k_models/logistic_regression_450k.pkl")
+    models["Random Forest v1"] = joblib.load("models/450k_models/random_forest_v1_450k.pkl")
+    models["Random Forest v2"] = joblib.load("models/450k_models/random_forest_v2_450k.pkl")
+    models["CatBoost v1"] = joblib.load("models/advanced_models/catboost_v1.pkl")
+    models["CatBoost v2"] = joblib.load("models/advanced_models/catboost_v2.pkl")
+    models["Isolation Forest"] = joblib.load("models/advanced_models/isolation_forest.pkl")
+    return models
 # =====================================================
 # ФУНКЦИЯ РАСЧЁТА БИЗНЕС-СТОИМОСТИ
 # =====================================================
@@ -53,6 +62,7 @@ def calculate_business_cost(y_true, y_pred, fp_weight, fn_weight):
 # =====================================================
 
 st.set_page_config(page_title="Система антифрода", layout="wide")
+init_db()
 st.title("Система антифрода")
 
 with st.expander("Информация о стресс-сценариях"):
@@ -168,7 +178,6 @@ if compare_button:
         st.session_state.classic_df = classic_df
         st.session_state.stress_df = apply_stress(classic_df.copy(), selected_scenario)
         st.session_state.results_calculated = False
-        # Сохраняем текущие параметры для отслеживания изменений
         st.session_state.last_selected_models = selected_models.copy()
         st.session_state.last_threshold = threshold
         st.session_state.last_fraud_ratio = fraud_ratio
@@ -183,7 +192,6 @@ if compare_button:
 if st.session_state.classic_df is not None:
     st.subheader("Редактирование датасета")
     edited_df = st.data_editor(st.session_state.classic_df, num_rows="dynamic", key="data_editor")
-    # Если пользователь изменил данные, обновляем сессию и пересчитываем стресс-сценарий
     if not edited_df.equals(st.session_state.classic_df):
         st.session_state.classic_df = edited_df
         st.session_state.stress_df = apply_stress(edited_df.copy(), selected_scenario)
@@ -192,7 +200,6 @@ if st.session_state.classic_df is not None:
     st.subheader("Сгенерированные данные")
     st.dataframe(st.session_state.classic_df.head(), use_container_width=True)
 
-    # Проверка типов данных (только числовые колонки)
     feature_cols = get_expected_columns()
     wrong_types = []
     for col in feature_cols:
@@ -225,7 +232,6 @@ if st.session_state.classic_df is not None:
         for name, model in models.items():
             st.info(f"Анализ модели: {name}")
 
-            # Обработка данных в зависимости от типа модели
             if name in ["Logistic Regression", "Random Forest v1", "Random Forest v2"]:
                 X_classic_processed = X_classic[feature_cols].copy()
                 X_stress_processed = X_stress[feature_cols].copy()
@@ -240,8 +246,9 @@ if st.session_state.classic_df is not None:
                 X_classic_processed = pd.get_dummies(X_classic.copy())
                 X_stress_processed = pd.get_dummies(X_stress.copy())
                 X_stress_processed = X_stress_processed.reindex(columns=X_classic_processed.columns, fill_value=0)
+            else:
+                continue
 
-            # Предсказания
             if hasattr(model, "predict_proba"):
                 classic_proba = model.predict_proba(X_classic_processed)[:, 1]
                 classic_pred = (classic_proba >= threshold).astype(int)
@@ -255,11 +262,9 @@ if st.session_state.classic_df is not None:
                 classic_pred = (classic_pred == -1).astype(int)
                 stress_pred = (stress_pred == -1).astype(int)
 
-            # Бизнес-стоимость
             business_cost_classic = calculate_business_cost(y_classic, classic_pred, fp_weight, fn_weight)
             business_cost_stress = calculate_business_cost(y_stress, stress_pred, fp_weight, fn_weight)
 
-            # Метрики
             results_classic.append({
                 "Модель": name,
                 "Precision": round(precision_score(y_classic, classic_pred, zero_division=0), 4),
@@ -275,7 +280,6 @@ if st.session_state.classic_df is not None:
                 "Business Cost": business_cost_stress
             })
 
-        # Сохраняем результаты в сессию
         st.session_state.results_classic = pd.DataFrame(results_classic)
         st.session_state.results_stress = pd.DataFrame(results_stress)
         st.session_state.last_selected_models = selected_models.copy()
@@ -283,13 +287,12 @@ if st.session_state.classic_df is not None:
         st.session_state.results_calculated = True
 
     # =================================================
-    # ОТОБРАЖЕНИЕ РЕЗУЛЬТАТОВ (из сессии)
+    # ОТОБРАЖЕНИЕ РЕЗУЛЬТАТОВ И ЛОГИРОВАНИЕ В БД
     # =================================================
     if st.session_state.results_classic is not None and st.session_state.results_stress is not None:
         df_classic = st.session_state.results_classic.copy()
         df_stress = st.session_state.results_stress.copy()
 
-        # Форматирование в проценты
         for col in ["Precision", "Recall", "F1"]:
             df_classic[col] = df_classic[col].apply(lambda x: f"{x*100:.1f}%")
             df_stress[col] = df_stress[col].apply(lambda x: f"{x*100:.1f}%")
@@ -309,19 +312,49 @@ if st.session_state.classic_df is not None:
         fig = px.bar(chart_df, x="Модель", y=["F1 Classic", "F1 Stress"], barmode="group")
         st.plotly_chart(fig, use_container_width=True)
 
+        # ЛОГИРОВАНИЕ В БАЗУ ДАННЫХ (только если эксперимент ещё не сохранён)
+        try:
+            exp_id = create_experiment(
+                sample_size=sample_size,
+                threshold=threshold,
+                fraud_ratio=fraud_ratio,
+                stress_scenario=selected_scenario,
+                models_used=selected_models
+            )
+            for idx, row in df_classic.iterrows():
+                model_name = row["Модель"]
+                precision = float(row["Precision"].rstrip("%")) / 100
+                recall = float(row["Recall"].rstrip("%")) / 100
+                f1 = float(row["F1"].rstrip("%")) / 100
+                cost = row["Business Cost"]
+                save_model_results(
+                    exp_id=exp_id,
+                    model_name=model_name,
+                    mode="classic",
+                    precision=precision,
+                    recall=recall,
+                    f1=f1,
+                    business_cost=cost
+                )
+            for idx, row in df_stress.iterrows():
+                model_name = row["Модель"]
+                precision = float(row["Precision"].rstrip("%")) / 100
+                recall = float(row["Recall"].rstrip("%")) / 100
+                f1 = float(row["F1"].rstrip("%")) / 100
+                cost = row["Business Cost"]
+                save_model_results(
+                    exp_id=exp_id,
+                    model_name=model_name,
+                    mode="stress",
+                    precision=precision,
+                    recall=recall,
+                    f1=f1,
+                    business_cost=cost
+                )
+            finish_experiment(exp_id)
+            st.success(f"Эксперимент сохранён в БД (ID: {exp_id})")
+        except Exception as db_err:
+            logging.error(f"DB error: {db_err}")
+            st.warning("Не удалось сохранить результаты в базу данных")
+
         st.success("Анализ завершён")
-
-# =====================================================
-# ЗАГРУЗКА МОДЕЛЕЙ (кэшируется)
-# =====================================================
-
-@st.cache_resource
-def load_all_models():
-    models = {}
-    models["Logistic Regression"] = joblib.load("models/450k_models/logistic_regression_450k.pkl")
-    models["Random Forest v1"] = joblib.load("models/450k_models/random_forest_v1_450k.pkl")
-    models["Random Forest v2"] = joblib.load("models/450k_models/random_forest_v2_450k.pkl")
-    models["CatBoost v1"] = joblib.load("models/advanced_models/catboost_v1.pkl")
-    models["CatBoost v2"] = joblib.load("models/advanced_models/catboost_v2.pkl")
-    models["Isolation Forest"] = joblib.load("models/advanced_models/isolation_forest.pkl")
-    return models
