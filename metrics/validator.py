@@ -1,15 +1,24 @@
-# metrics/validator.py
+"""
+Модуль валидации CSV-файлов.
+
+Содержит функции для проверки загруженных пользователем CSV-файлов:
+- validate_csv() - основная функция валидации
+- prepare_data_for_prediction() - подготовка данных для моделей
+- get_column_info() - информация об ожидаемых колонках
+"""
+
 import pandas as pd
 import numpy as np
 from data_generator import get_expected_columns
 
+
 def validate_csv(df):
     """
-    Проверяет валидность загруженного CSV файла
-    
+    Проверяет валидность загруженного CSV файла.
+
     Параметры:
     - df: pandas DataFrame с данными от пользователя
-    
+
     Возвращает:
     - is_valid: bool (True если всё корректно)
     - errors: список строк с описанием ошибок
@@ -17,100 +26,115 @@ def validate_csv(df):
     """
     errors = []
     warnings = []
-    
+
     # Получаем ожидаемые колонки из генератора
     expected_columns = get_expected_columns()
-    
+
     # 1. Проверка наличия всех обязательных колонок
     missing_cols = set(expected_columns) - set(df.columns)
     if missing_cols:
-        errors.append(f"Отсутствуют обязательные столбцы: {', '.join(missing_cols)}")
-    
+        errors.append(
+            f"Отсутствуют обязательные столбцы: {', '.join(sorted(missing_cols))}"
+        )
+
     # 2. Проверка на лишние колонки (предупреждение)
     extra_cols = set(df.columns) - set(expected_columns)
     if extra_cols:
-        warnings.append(f"Обнаружены лишние столбцы: {', '.join(extra_cols)}. Они будут проигнорированы.")
-    
+        warnings.append(
+            f"Обнаружены лишние столбцы: {', '.join(sorted(extra_cols))}. "
+            "Они будут проигнорированы."
+        )
+
     # 3. Проверка типов данных (должны быть числовые)
     for col in expected_columns:
         if col in df.columns:
             if not pd.api.types.is_numeric_dtype(df[col]):
-                errors.append(f"Столбец '{col}' должен быть числовым, но получен тип {df[col].dtype}")
-    
+                errors.append(
+                    f"Столбец '{col}' должен быть числовым, "
+                    f"но получен тип {df[col].dtype}"
+                )
+
     # 4. Проверка на пропуски (null значения)
     for col in expected_columns:
         if col in df.columns and df[col].isnull().any():
             null_count = df[col].isnull().sum()
-            errors.append(f"Столбец '{col}' содержит {null_count} пропущенных значений")
-    
+            errors.append(
+                f"Столбец '{col}' содержит {null_count} пропущенных значений"
+            )
+
     # 5. Проверка на бесконечные значения (inf, -inf)
     for col in expected_columns:
-        if col in df.columns and df[col].dtype in ['float64', 'float32']:
+        if col in df.columns and df[col].dtype in ["float64", "float32"]:
             if np.isinf(df[col]).any():
                 inf_count = np.isinf(df[col]).sum()
-                errors.append(f"Столбец '{col}' содержит {inf_count} бесконечных значений")
-    
+                errors.append(
+                    f"Столбец '{col}' содержит {inf_count} бесконечных значений"
+                )
+
     # 6. Проверка диапазонов для некоторых признаков
     # is_fraud не обязателен, но если есть - проверяем
-    if 'is_fraud' in df.columns:
-        if not df['is_fraud'].isin([0, 1]).all():
-            errors.append("Столбец 'is_fraud' может содержать только значения 0 или 1")
-    
+    if "is_fraud" in df.columns:
+        if not df["is_fraud"].isin([0, 1]).all():
+            errors.append(
+                "Столбец 'is_fraud' может содержать только значения 0 или 1"
+            )
+
     # 7. Проверка, что в данных есть хотя бы одна строка
     if len(df) == 0:
         errors.append("Файл не содержит данных (0 строк)")
-    
+
     # 8. Проверка, что нет дубликатов строк (опционально)
     if df.duplicated().any():
         dup_count = df.duplicated().sum()
         warnings.append(f"Обнаружено {dup_count} дублирующихся строк")
-    
+
     is_valid = len(errors) == 0
-    
+
     return is_valid, errors, warnings
 
 
 def prepare_data_for_prediction(df):
     """
-    Подготавливает DataFrame для предсказания:
+    Подготавливает DataFrame для предсказания.
+
     - Оставляет только нужные колонки
-    - Заполняет пропуски (если есть) - но лучше чтобы валидатор их отловил
-    
+    - Заполняет пропуски (если есть) - лучше чтобы валидатор их отловил
+
     Параметры:
     - df: исходный DataFrame
-    
+
     Возвращает:
     - X: DataFrame только с признаками для модели
     """
     expected_columns = get_expected_columns()
-    
+
     # Оставляем только ожидаемые колонки
     available_cols = [col for col in expected_columns if col in df.columns]
     X = df[available_cols].copy()
-    
+
     # Если есть пропуски - заполняем медианой (но лучше чтобы валидатор их отловил)
     for col in X.columns:
         if X[col].isnull().any():
             X[col].fillna(X[col].median(), inplace=True)
-    
+
     return X
 
 
 def get_column_info():
-    """Возвращает информацию об ожидаемых колонках для отображения в UI"""
+    """Возвращает информацию об ожидаемых колонках для отображения в UI."""
     expected_columns = get_expected_columns()
-    
+
     return {
-        'expected_columns': expected_columns,
-        'total_count': len(expected_columns),
-        'description': 'Признаки для модели обнаружения фрода',
-        'sample_types': {
-            'amount': 'числовой (сумма транзакции)',
-            'transaction_minute': 'числовой (минуты с 00:00)',
-            'day_of_week': 'числовой (0-6, где 0 - понедельник)',
-            'distance_km': 'числовой (расстояние до магазина)',
-            'is_contactless': 'бинарный (0/1)',
-            'age': 'числовой (возраст клиента)',
-            'device_risk': 'категориальный (0, 1, 2)'
-        }
+        "expected_columns": expected_columns,
+        "total_count": len(expected_columns),
+        "description": "Признаки для модели обнаружения фрода",
+        "sample_types": {
+            "amount": "числовой (сумма транзакции)",
+            "transaction_minute": "числовой (минуты с 00:00)",
+            "day_of_week": "числовой (0-6)",
+            "distance_km": "числовой",
+            "is_contactless": "бинарный (0/1)",
+            "age": "числовой (возраст клиента)",
+            "device_risk": "категориальный (0, 1, 2)",
+        },
     }
