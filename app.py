@@ -219,6 +219,8 @@ if "last_threshold" not in st.session_state:
     st.session_state.last_threshold = threshold
 if "last_fraud_ratio" not in st.session_state:
     st.session_state.last_fraud_ratio = fraud_ratio
+if "data_valid" not in st.session_state:
+    st.session_state.data_valid = True
 
 # =====================================================
 # ОСНОВНАЯ ЛОГИКА (генерация/загрузка данных при нажатии кнопки)
@@ -264,10 +266,37 @@ if compare_button:
 if st.session_state.classic_df is not None:
     st.subheader("Редактирование датасета")
     edited_df = st.data_editor(st.session_state.classic_df, num_rows="dynamic", key="data_editor")
+    
     if not edited_df.equals(st.session_state.classic_df):
-        st.session_state.classic_df = edited_df
-        st.session_state.stress_df = apply_stress(edited_df.copy(), selected_scenario)
-        st.session_state.results_calculated = False
+        # Повторная валидация после редактирования (Back2)
+        from metrics.validator import validate_csv
+        
+        is_valid, errors, warnings = validate_csv(edited_df)
+        
+        if is_valid:
+            st.success("Отредактированные данные прошли валидацию")
+            st.session_state.classic_df = edited_df
+            st.session_state.stress_df = apply_stress(edited_df.copy(), selected_scenario)
+            st.session_state.results_calculated = False
+            st.session_state.data_valid = True
+        else:
+            for error in errors:
+                st.error(error)
+            for warning in warnings:
+                st.warning(warning)
+            st.warning("Отредактированные данные содержат ошибки. Модели не будут запущены до исправления.")
+            st.session_state.data_valid = False
+    else:
+        # Данные не изменились, проверяем при первой загрузке
+        if "data_valid" not in st.session_state:
+            from metrics.validator import validate_csv
+            is_valid, errors, warnings = validate_csv(st.session_state.classic_df)
+            st.session_state.data_valid = is_valid
+            if not is_valid:
+                for error in errors:
+                    st.error(error)
+                for warning in warnings:
+                    st.warning(warning)
 
     st.subheader("Сгенерированные данные")
     st.dataframe(st.session_state.classic_df.head(), use_container_width=True)
@@ -286,7 +315,7 @@ if st.session_state.classic_df is not None:
     threshold_changed = (st.session_state.last_threshold != threshold)
     need_recalc = (not st.session_state.results_calculated) or models_changed or threshold_changed
 
-    if need_recalc:
+    if need_recalc and st.session_state.data_valid:
         X_classic = st.session_state.classic_df.drop(columns=["is_fraud"], errors="ignore")
         y_classic = st.session_state.classic_df["is_fraud"]
         X_stress = st.session_state.stress_df.drop(columns=["is_fraud"], errors="ignore")
