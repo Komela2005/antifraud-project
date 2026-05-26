@@ -9,8 +9,7 @@
 
 import pandas as pd
 import numpy as np
-from data_generator import get_expected_columns
-
+from data_generator.generator import get_expected_columns
 
 def validate_csv(df):
     """
