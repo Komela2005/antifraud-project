@@ -55,7 +55,7 @@ def load_or_generate_data(uploaded_file, sample_size, fraud_ratio):
         
         # ИНТЕГРАЦИЯ ВАЛИДАТОРА (Back1)
         from metrics.validator import validate_csv
-        is_valid, errors, warnings = validate_csv(df)
+        is_valid, errors, warnings = validate_csv(df, require_target=False)
         
         for warning in warnings:
             st.warning(warning)
@@ -270,8 +270,10 @@ if st.session_state.classic_df is not None:
     if not edited_df.equals(st.session_state.classic_df):
         # Повторная валидация после редактирования (Back2)
         from metrics.validator import validate_csv
-        
-        is_valid, errors, warnings = validate_csv(edited_df)
+    
+        # Проверяем, есть ли is_fraud в отредактированных данных
+        require_target = "is_fraud" in edited_df.columns
+        is_valid, errors, warnings = validate_csv(edited_df, require_target=require_target)
         
         if is_valid:
             st.success("Отредактированные данные прошли валидацию")
