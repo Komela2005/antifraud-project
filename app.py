@@ -302,20 +302,52 @@ if st.session_state.classic_df is not None:
         for name, model in models.items():
             st.info(f"Анализ модели: {name}")
 
+            # ========== LOGISTIC REGRESSION & RANDOM FOREST ==========
             if name in ["Logistic Regression", "Random Forest v1", "Random Forest v2"]:
-                X_classic_processed = X_classic[feature_cols].copy()
-                X_stress_processed = X_stress[feature_cols].copy()
+                # Получаем ожидаемые колонки из модели
+                if hasattr(model, "feature_names_in_"):
+                    expected_cols = list(model.feature_names_in_)
+                else:
+                    # Fallback для старых моделей
+                    expected_cols = get_expected_columns()
+                    # Убираем 'category' если есть (LR/RF не используют)
+                    expected_cols = [col for col in expected_cols if col != 'category']
+                
+                # Проверяем наличие всех колонок
+                missing_cols = set(expected_cols) - set(X_classic.columns)
+                if missing_cols:
+                    st.error(f"Модель {name} ожидает колонки: {missing_cols}. Они отсутствуют в данных.")
+                    st.stop()
+                
+                # Переставляем колонки в правильном порядке (без fill_value)
+                X_classic_processed = X_classic[expected_cols].copy()
+                X_stress_processed = X_stress[expected_cols].copy()
+            
+            # ========== CATBOOST ==========
             elif "CatBoost" in name:
                 X_classic_processed = X_classic.copy()
                 X_stress_processed = X_stress.copy()
+                
+                # Преобразуем категориальный признак
                 if "category" in X_classic_processed.columns:
                     X_classic_processed["category"] = X_classic_processed["category"].astype("category")
                 if "category" in X_stress_processed.columns:
                     X_stress_processed["category"] = X_stress_processed["category"].astype("category")
+            
+            # ========== ISOLATION FOREST ==========
             elif name == "Isolation Forest":
+                # One-hot encoding для категориальных признаков
                 X_classic_processed = pd.get_dummies(X_classic.copy())
                 X_stress_processed = pd.get_dummies(X_stress.copy())
-                X_stress_processed = X_stress_processed.reindex(columns=X_classic_processed.columns, fill_value=0)
+                
+                # Получаем ожидаемые колонки из модели
+                if hasattr(model, "feature_names_in_"):
+                    expected_cols = list(model.feature_names_in_)
+                    
+                    # Приводим к нужным колонкам (fill_value=0, так как категории могут отсутствовать)
+                    X_classic_processed = X_classic_processed.reindex(columns=expected_cols, fill_value=0)
+                    X_stress_processed = X_stress_processed.reindex(columns=expected_cols, fill_value=0)
+            
             else:
                 continue
 
@@ -355,6 +387,7 @@ if st.session_state.classic_df is not None:
         st.session_state.last_selected_models = selected_models.copy()
         st.session_state.last_threshold = threshold
         st.session_state.results_calculated = True
+
 
     # =================================================
     # ОТОБРАЖЕНИЕ РЕЗУЛЬТАТОВ И ЛОГИРОВАНИЕ В БД
