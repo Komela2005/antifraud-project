@@ -52,11 +52,19 @@ def load_or_generate_data(uploaded_file, sample_size, fraud_ratio):
             return None, None
         
         df = pd.read_csv(uploaded_file)
-        required_columns = get_expected_columns() + ["is_fraud"]
-        missing = [c for c in required_columns if c not in df.columns]
-        if missing:
-            st.error(f"Отсутствуют колонки: {missing}")
+        
+        # ИНТЕГРАЦИЯ ВАЛИДАТОРА (Back1)
+        from metrics.validator import validate_csv
+        is_valid, errors, warnings = validate_csv(df)
+        
+        for warning in warnings:
+            st.warning(warning)
+        
+        if not is_valid:
+            for error in errors:
+                st.error(error)
             return None, None
+            
         return df, "uploaded"
     else:
         with st.spinner("Генерация синтетических данных..."):
@@ -65,15 +73,6 @@ def load_or_generate_data(uploaded_file, sample_size, fraud_ratio):
                 label_noise=0.015, random_state=42, use_stratification=True
             )
         return df, "synthetic"
-
-
-def validate_data_types(df, feature_cols):
-    """Проверяет типы данных"""
-    wrong_types = []
-    for col in feature_cols:
-        if col in df.columns and not pd.api.types.is_numeric_dtype(df[col]):
-            wrong_types.append(col)
-    return wrong_types
 
 # =====================================================
 # ФУНКЦИИ ПОДГОТОВКИ ДАННЫХ ДЛЯ МОДЕЛЕЙ (Back2)
