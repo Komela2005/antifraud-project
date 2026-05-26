@@ -55,7 +55,7 @@ def load_or_generate_data(uploaded_file, sample_size, fraud_ratio):
         
         # ИНТЕГРАЦИЯ ВАЛИДАТОРА (Back1)
         from metrics.validator import validate_csv
-        is_valid, errors, warnings = validate_csv(df)
+        is_valid, errors, warnings = validate_csv(df, require_target=False)
         
         for warning in warnings:
             st.warning(warning)
@@ -219,6 +219,8 @@ if "last_threshold" not in st.session_state:
     st.session_state.last_threshold = threshold
 if "last_fraud_ratio" not in st.session_state:
     st.session_state.last_fraud_ratio = fraud_ratio
+if "data_valid" not in st.session_state:
+    st.session_state.data_valid = True
 
 # =====================================================
 # ОСНОВНАЯ ЛОГИКА (генерация/загрузка данных при нажатии кнопки)
@@ -231,6 +233,21 @@ if compare_button:
         classic_df, source = load_or_generate_data(uploaded_file, sample_size, fraud_ratio)
         if classic_df is None:
             st.stop()
+
+        # ПОДГОТОВКА ДАННЫХ И СВОДКА (Back2)
+        from metrics.validator import prepare_data_for_prediction, get_column_info
+        
+        classic_df = prepare_data_for_prediction(classic_df)
+        
+        # Показываем сводку о данных
+        col_info = get_column_info()
+        st.success(f"Файл прошёл валидацию! Загружено {len(classic_df)} строк, {len(classic_df.columns)} признаков.")
+        
+        with st.expander("Информация о признаках"):
+            st.markdown(f"**Всего признаков:** {col_info['total_count']}")
+            st.markdown("**Основные признаки:**")
+            for name, desc in list(col_info['sample_types'].items())[:5]:
+                st.markdown(f"- `{name}`: {desc}")
         
         st.session_state.classic_df = classic_df
         st.session_state.stress_df = apply_stress(classic_df.copy(), selected_scenario)
@@ -249,19 +266,49 @@ if compare_button:
 if st.session_state.classic_df is not None:
     st.subheader("Редактирование датасета")
     edited_df = st.data_editor(st.session_state.classic_df, num_rows="dynamic", key="data_editor")
+    
     if not edited_df.equals(st.session_state.classic_df):
-        st.session_state.classic_df = edited_df
-        st.session_state.stress_df = apply_stress(edited_df.copy(), selected_scenario)
-        st.session_state.results_calculated = False
+        # Повторная валидация после редактирования (Back2)
+        from metrics.validator import validate_csv
+    
+        # Проверяем, есть ли is_fraud в отредактированных данных
+        require_target = "is_fraud" in edited_df.columns
+        is_valid, errors, warnings = validate_csv(edited_df, require_target=require_target)
+        
+        if is_valid:
+            st.success("Отредактированные данные прошли валидацию")
+            st.session_state.classic_df = edited_df
+            st.session_state.stress_df = apply_stress(edited_df.copy(), selected_scenario)
+            st.session_state.results_calculated = False
+            st.session_state.data_valid = True
+        else:
+            for error in errors:
+                st.error(error)
+            for warning in warnings:
+                st.warning(warning)
+            st.warning("Отредактированные данные содержат ошибки. Модели не будут запущены до исправления.")
+            st.session_state.data_valid = False
+    else:
+        # Данные не изменились, проверяем при первой загрузке
+        if "data_valid" not in st.session_state:
+            from metrics.validator import validate_csv
+            is_valid, errors, warnings = validate_csv(st.session_state.classic_df)
+            st.session_state.data_valid = is_valid
+            if not is_valid:
+                for error in errors:
+                    st.error(error)
+                for warning in warnings:
+                    st.warning(warning)
 
     st.subheader("Сгенерированные данные")
     st.dataframe(st.session_state.classic_df.head(), use_container_width=True)
 
-    feature_cols = get_expected_columns()
-    wrong_types = validate_data_types(st.session_state.classic_df, feature_cols)
-    if wrong_types:
-        st.error(f"Неверный тип данных в колонках: {wrong_types}")
-        st.stop()
+    # Проверка типов данных теперь выполняется в validate_csv()
+    # feature_cols = get_expected_columns()
+    # wrong_types = validate_data_types(st.session_state.classic_df, feature_cols)
+    # if wrong_types:
+    #     st.error(f"Неверный тип данных в колонках: {wrong_types}")
+    #     st.stop()
 
     # =================================================
     # ПЕРЕСЧЁТ МЕТРИК (только если изменились модели, порог или данные)
@@ -270,11 +317,23 @@ if st.session_state.classic_df is not None:
     threshold_changed = (st.session_state.last_threshold != threshold)
     need_recalc = (not st.session_state.results_calculated) or models_changed or threshold_changed
 
-    if need_recalc:
-        X_classic = st.session_state.classic_df.drop(columns=["is_fraud"], errors="ignore")
+    if need_recalc and st.session_state.data_valid:
+        # Проверяем наличие целевой переменной
+        if "is_fraud" not in st.session_state.classic_df.columns:
+            st.error("В данных отсутствует колонка 'is_fraud' (целевая переменная). "
+                     "Для синтетических данных это ошибка генерации. "
+                     "Для пользовательских CSV - добавьте колонку с метками 0/1.")
+            st.stop()
+        
         y_classic = st.session_state.classic_df["is_fraud"]
-        X_stress = st.session_state.stress_df.drop(columns=["is_fraud"], errors="ignore")
+        X_classic = st.session_state.classic_df.drop(columns=["is_fraud"], errors="ignore")
+        
+        if "is_fraud" not in st.session_state.stress_df.columns:
+            st.error("В стресс-данных отсутствует колонка 'is_fraud'")
+            st.stop()
+        
         y_stress = st.session_state.stress_df["is_fraud"]
+        X_stress = st.session_state.stress_df.drop(columns=["is_fraud"], errors="ignore")
 
         all_models_dict = load_all_models()
         models = {name: all_models_dict[name] for name in selected_models if name in all_models_dict}
@@ -286,20 +345,52 @@ if st.session_state.classic_df is not None:
         for name, model in models.items():
             st.info(f"Анализ модели: {name}")
 
+            # ========== LOGISTIC REGRESSION & RANDOM FOREST ==========
             if name in ["Logistic Regression", "Random Forest v1", "Random Forest v2"]:
-                X_classic_processed = X_classic[feature_cols].copy()
-                X_stress_processed = X_stress[feature_cols].copy()
+                # Получаем ожидаемые колонки из модели
+                if hasattr(model, "feature_names_in_"):
+                    expected_cols = list(model.feature_names_in_)
+                else:
+                    # Fallback для старых моделей
+                    expected_cols = get_expected_columns()
+                    # Убираем 'category' если есть (LR/RF не используют)
+                    expected_cols = [col for col in expected_cols if col != 'category']
+                
+                # Проверяем наличие всех колонок
+                missing_cols = set(expected_cols) - set(X_classic.columns)
+                if missing_cols:
+                    st.error(f"Модель {name} ожидает колонки: {missing_cols}. Они отсутствуют в данных.")
+                    st.stop()
+                
+                # Переставляем колонки в правильном порядке (без fill_value)
+                X_classic_processed = X_classic[expected_cols].copy()
+                X_stress_processed = X_stress[expected_cols].copy()
+            
+            # ========== CATBOOST ==========
             elif "CatBoost" in name:
                 X_classic_processed = X_classic.copy()
                 X_stress_processed = X_stress.copy()
+                
+                # Преобразуем категориальный признак
                 if "category" in X_classic_processed.columns:
                     X_classic_processed["category"] = X_classic_processed["category"].astype("category")
                 if "category" in X_stress_processed.columns:
                     X_stress_processed["category"] = X_stress_processed["category"].astype("category")
+            
+            # ========== ISOLATION FOREST ==========
             elif name == "Isolation Forest":
+                # One-hot encoding для категориальных признаков
                 X_classic_processed = pd.get_dummies(X_classic.copy())
                 X_stress_processed = pd.get_dummies(X_stress.copy())
-                X_stress_processed = X_stress_processed.reindex(columns=X_classic_processed.columns, fill_value=0)
+                
+                # Получаем ожидаемые колонки из модели
+                if hasattr(model, "feature_names_in_"):
+                    expected_cols = list(model.feature_names_in_)
+                    
+                    # Приводим к нужным колонкам (fill_value=0, так как категории могут отсутствовать)
+                    X_classic_processed = X_classic_processed.reindex(columns=expected_cols, fill_value=0)
+                    X_stress_processed = X_stress_processed.reindex(columns=expected_cols, fill_value=0)
+            
             else:
                 continue
 
@@ -339,6 +430,7 @@ if st.session_state.classic_df is not None:
         st.session_state.last_selected_models = selected_models.copy()
         st.session_state.last_threshold = threshold
         st.session_state.results_calculated = True
+
 
     # =================================================
     # ОТОБРАЖЕНИЕ РЕЗУЛЬТАТОВ И ЛОГИРОВАНИЕ В БД
