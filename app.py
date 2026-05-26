@@ -316,10 +316,22 @@ if st.session_state.classic_df is not None:
     need_recalc = (not st.session_state.results_calculated) or models_changed or threshold_changed
 
     if need_recalc and st.session_state.data_valid:
-        X_classic = st.session_state.classic_df.drop(columns=["is_fraud"], errors="ignore")
+        # Проверяем наличие целевой переменной
+        if "is_fraud" not in st.session_state.classic_df.columns:
+            st.error("В данных отсутствует колонка 'is_fraud' (целевая переменная). "
+                     "Для синтетических данных это ошибка генерации. "
+                     "Для пользовательских CSV - добавьте колонку с метками 0/1.")
+            st.stop()
+        
         y_classic = st.session_state.classic_df["is_fraud"]
-        X_stress = st.session_state.stress_df.drop(columns=["is_fraud"], errors="ignore")
+        X_classic = st.session_state.classic_df.drop(columns=["is_fraud"], errors="ignore")
+        
+        if "is_fraud" not in st.session_state.stress_df.columns:
+            st.error("В стресс-данных отсутствует колонка 'is_fraud'")
+            st.stop()
+        
         y_stress = st.session_state.stress_df["is_fraud"]
+        X_stress = st.session_state.stress_df.drop(columns=["is_fraud"], errors="ignore")
 
         all_models_dict = load_all_models()
         models = {name: all_models_dict[name] for name in selected_models if name in all_models_dict}
