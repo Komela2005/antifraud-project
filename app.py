@@ -75,6 +75,39 @@ def validate_data_types(df, feature_cols):
             wrong_types.append(col)
     return wrong_types
 
+# =====================================================
+# ФУНКЦИИ ПОДГОТОВКИ ДАННЫХ ДЛЯ МОДЕЛЕЙ (Back2)
+# =====================================================
+
+def prepare_data_for_lr_rf(X, feature_cols):
+    """Подготовка данных для Logistic Regression и Random Forest"""
+    return X[feature_cols].copy()
+
+
+def prepare_data_for_catboost(X):
+    """Подготовка данных для CatBoost"""
+    X = X.copy()
+    if "category" in X.columns:
+        X["category"] = X["category"].astype("category")
+    return X
+
+
+def prepare_data_for_iforest(X):
+    """Подготовка данных для Isolation Forest (one-hot encoding)"""
+    return pd.get_dummies(X.copy())
+
+
+def prepare_model_data(model_name, X, feature_cols):
+    """Универсальная функция подготовки данных для любой модели"""
+    if model_name in ["Logistic Regression", "Random Forest v1", "Random Forest v2"]:
+        return prepare_data_for_lr_rf(X, feature_cols)
+    elif "CatBoost" in model_name:
+        return prepare_data_for_catboost(X)
+    elif model_name == "Isolation Forest":
+        return prepare_data_for_iforest(X)
+    else:
+        return X
+
 @st.cache_resource
 def load_all_models():
     models = {}
