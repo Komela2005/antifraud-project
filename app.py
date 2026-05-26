@@ -231,6 +231,21 @@ if compare_button:
         classic_df, source = load_or_generate_data(uploaded_file, sample_size, fraud_ratio)
         if classic_df is None:
             st.stop()
+
+        # ПОДГОТОВКА ДАННЫХ И СВОДКА (Back2)
+        from metrics.validator import prepare_data_for_prediction, get_column_info
+        
+        classic_df = prepare_data_for_prediction(classic_df)
+        
+        # Показываем сводку о данных
+        col_info = get_column_info()
+        st.success(f"Файл прошёл валидацию! Загружено {len(classic_df)} строк, {len(classic_df.columns)} признаков.")
+        
+        with st.expander("Информация о признаках"):
+            st.markdown(f"**Всего признаков:** {col_info['total_count']}")
+            st.markdown("**Основные признаки:**")
+            for name, desc in list(col_info['sample_types'].items())[:5]:
+                st.markdown(f"- `{name}`: {desc}")
         
         st.session_state.classic_df = classic_df
         st.session_state.stress_df = apply_stress(classic_df.copy(), selected_scenario)
@@ -257,11 +272,12 @@ if st.session_state.classic_df is not None:
     st.subheader("Сгенерированные данные")
     st.dataframe(st.session_state.classic_df.head(), use_container_width=True)
 
-    feature_cols = get_expected_columns()
-    wrong_types = validate_data_types(st.session_state.classic_df, feature_cols)
-    if wrong_types:
-        st.error(f"Неверный тип данных в колонках: {wrong_types}")
-        st.stop()
+    # Проверка типов данных теперь выполняется в validate_csv()
+    # feature_cols = get_expected_columns()
+    # wrong_types = validate_data_types(st.session_state.classic_df, feature_cols)
+    # if wrong_types:
+    #     st.error(f"Неверный тип данных в колонках: {wrong_types}")
+    #     st.stop()
 
     # =================================================
     # ПЕРЕСЧЁТ МЕТРИК (только если изменились модели, порог или данные)
