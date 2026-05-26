@@ -1,18 +1,48 @@
-import numpy as np
-import pandas as pd
+# =====================================================
+# СТАНДАРТНЫЕ БИБЛИОТЕКИ
+# =====================================================
 from datetime import datetime, timedelta
 import random
+
+# =====================================================
+# СТОРОННИЕ БИБЛИОТЕКИ
+# =====================================================
+import numpy as np
+import pandas as pd
 from faker import Faker
 
-def generate_fraud_dataset(n_transactions=2000, fraud_ratio=0.01, label_noise=0.015, random_state=42):
-    """
-    Генерирует синтетический датасет транзакций с указанным количеством строк.
 
-    Параметры:
-    - n_transactions: точное число транзакций (по умолч. 2000)
-    - fraud_ratio: доля мошеннических транзакций до шума (1%)
-    - label_noise: доля перевёрнутых меток (1.5%)
-    - random_state: seed для воспроизводимости
+# =====================================================
+# ГЕНЕРАТОР ДАННЫХ
+# =====================================================
+
+def generate_fraud_dataset(
+    n_transactions: int = 2000,
+    fraud_ratio: float = 0.01,
+    label_noise: float = 0.015,
+    random_state: int = 42
+) -> tuple:
+    """
+    Генерирует синтетический датасет транзакций.
+
+    Parameters
+    ----------
+    n_transactions : int
+        Количество транзакций (по умолчанию 2000)
+    fraud_ratio : float
+        Доля мошеннических транзакций до шума (по умолчанию 0.01 = 1%)
+    label_noise : float
+        Доля перевёрнутых меток (по умолчанию 0.015 = 1.5%)
+    random_state : int
+        Seed для воспроизводимости (по умолчанию 42)
+
+    Returns
+    -------
+    tuple
+        (X, y, df) где:
+        - X : pd.DataFrame — признаки
+        - y : pd.Series — метки
+        - df : pd.DataFrame — полный датасет с признаками и меткой
     """
     np.random.seed(random_state)
     random.seed(random_state)
@@ -193,6 +223,10 @@ def generate_fraud_dataset(n_transactions=2000, fraud_ratio=0.01, label_noise=0.
     return X, y, df[feature_cols + ['is_fraud']]
 
 
+# =====================================================
+# ФУНКЦИИ ДЛЯ ПОЛУЧЕНИЯ СПИСКОВ КОЛОНОК
+# =====================================================
+
 def get_expected_columns() -> list:
     """
     Возвращает базовый список колонок-признаков (21 колонка).
@@ -225,6 +259,7 @@ def get_expected_columns() -> list:
         'device_risk'
     ]
 
+
 def get_numeric_features() -> list:
     """
     Возвращает список числовых признаков (без 'category')
@@ -232,6 +267,7 @@ def get_numeric_features() -> list:
     """
     all_features = get_expected_columns()
     return [col for col in all_features if col != 'category']
+
 
 def get_features_for_iforest() -> list:
     """
@@ -248,6 +284,11 @@ def get_features_for_iforest() -> list:
     
     return numeric_features + categories
 
+
+# =====================================================
+# ФУНКЦИЯ ПОДВЫБОРКИ
+# =====================================================
+
 def generate_fraud_subset(
     subset_size: int = 500,
     full_size: int = 2000,
@@ -258,6 +299,31 @@ def generate_fraud_subset(
 ) -> pd.DataFrame:
     """
     Генерирует подвыборку указанного размера (100-2000) из основного генератора.
+
+    Parameters
+    ----------
+    subset_size : int
+        Размер подвыборки (от 100 до 2000, по умолчанию 500)
+    full_size : int
+        Размер полного датасета (по умолчанию 2000)
+    fraud_ratio : float
+        Доля мошеннических транзакций (по умолчанию 0.01 = 1%)
+    label_noise : float
+        Доля перевёрнутых меток (по умолчанию 0.015 = 1.5%)
+    random_state : int
+        Seed для воспроизводимости (по умолчанию 42)
+    use_stratification : bool
+        Сохранять точную долю фрода (по умолчанию True)
+
+    Returns
+    -------
+    pd.DataFrame
+        Подвыборка с признаками и колонкой 'is_fraud'
+
+    Raises
+    ------
+    ValueError
+        Если subset_size не в диапазоне 100-2000 или больше full_size
     """
     if not 100 <= subset_size <= 2000:
         raise ValueError(f"subset_size должен быть от 100 до 2000, получено {subset_size}")
