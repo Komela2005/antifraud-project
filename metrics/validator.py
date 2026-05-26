@@ -11,12 +11,16 @@ import pandas as pd
 import numpy as np
 from data_generator.generator import get_expected_columns
 
-def validate_csv(df):
+
+def validate_csv(df, require_target=False):
     """
     Проверяет валидность загруженного CSV файла.
 
     Параметры:
     - df: pandas DataFrame с данными от пользователя
+    - require_target: bool, требуется ли колонка 'is_fraud'
+                      True - для синтетических данных
+                      False - для пользовательских CSV (по умолчанию)
 
     Возвращает:
     - is_valid: bool (True если всё корректно)
@@ -29,6 +33,10 @@ def validate_csv(df):
     # Получаем ожидаемые колонки из генератора
     expected_columns = get_expected_columns()
 
+    # Если не требуем целевую переменную, убираем её из проверки
+    if not require_target and "is_fraud" in expected_columns:
+        expected_columns = [col for col in expected_columns if col != "is_fraud"]
+
     # 1. Проверка наличия всех обязательных колонок
     missing_cols = set(expected_columns) - set(df.columns)
     if missing_cols:
@@ -38,6 +46,9 @@ def validate_csv(df):
 
     # 2. Проверка на лишние колонки (предупреждение)
     extra_cols = set(df.columns) - set(expected_columns)
+    # Если не требуется is_fraud, игнорируем её как лишнюю
+    if not require_target and "is_fraud" in extra_cols:
+        extra_cols.discard("is_fraud")
     if extra_cols:
         warnings.append(
             f"Обнаружены лишние столбцы: {', '.join(sorted(extra_cols))}. "
@@ -70,19 +81,11 @@ def validate_csv(df):
                     f"Столбец '{col}' содержит {inf_count} бесконечных значений"
                 )
 
-    # 6. Проверка диапазонов для некоторых признаков
-    # is_fraud не обязателен, но если есть - проверяем
-    if "is_fraud" in df.columns:
-        if not df["is_fraud"].isin([0, 1]).all():
-            errors.append(
-                "Столбец 'is_fraud' может содержать только значения 0 или 1"
-            )
-
-    # 7. Проверка, что в данных есть хотя бы одна строка
+    # 6. Проверка, что в данных есть хотя бы одна строка
     if len(df) == 0:
         errors.append("Файл не содержит данных (0 строк)")
 
-    # 8. Проверка, что нет дубликатов строк (опционально)
+    # 7. Проверка, что нет дубликатов строк (опционально)
     if df.duplicated().any():
         dup_count = df.duplicated().sum()
         warnings.append(f"Обнаружено {dup_count} дублирующихся строк")
