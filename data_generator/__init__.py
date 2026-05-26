@@ -1,12 +1,24 @@
 """
 Пакет для генерации синтетических данных и стресс-сценариев
 """
-from .generator import generate_fraud_dataset, generate_fraud_subset, get_expected_columns
-from .stress_scenarios import apply_stress
+from .generator import (
+    generate_fraud_dataset,
+    generate_fraud_subset,
+    get_expected_columns,
+    get_numeric_features,
+    get_features_for_iforest
+)
+from .stress_scenarios import (
+    apply_stress,
+    get_available_scenarios
+)
 
 __all__ = [
-    'generate_fraud_dataset', 
+    'generate_fraud_dataset',
     'generate_fraud_subset',
     'get_expected_columns',
-    'apply_stress'
+    'get_numeric_features',
+    'get_features_for_iforest',
+    'apply_stress',
+    'get_available_scenarios'
 ]

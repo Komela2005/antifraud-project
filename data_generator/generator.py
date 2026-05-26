@@ -193,15 +193,60 @@ def generate_fraud_dataset(n_transactions=2000, fraud_ratio=0.01, label_noise=0.
     return X, y, df[feature_cols + ['is_fraud']]
 
 
-def get_expected_columns():
-    """Возвращает список ожидаемых колонок для валидации CSV"""
-    return ['amount', 'transaction_minute', 'day_of_week', 'time_deviation_min',
-            'distance_km', 'nfc_time_exceeded', 'nfc_duration_ms', 'is_unusual_amount',
-            'is_unusual_time', 'sms_anomaly_6h', 'phone_changed_48h', 'device_risk_high',
-            'device_age_days', 'suspect_cash_deposit', 'new_beneficiary_after_self_transfer',
-            'is_contactless', 'age', 'city_pop', 'avg_amount_client', 'std_amount_client',
-            'typical_minute_client', 'device_risk']
+def get_expected_columns() -> list:
+    """
+    Возвращает базовый список колонок-признаков (21 колонка).
+    
+    Включает:
+    - Все числовые признаки (20)
+    - Категориальный признак 'category' (для CatBoost и Isolation Forest)
+    """
+    return [
+        'amount',
+        'category',
+        'transaction_hour',
+        'day_of_week',
+        'distance_km',
+        'nfc_time_exceeded',
+        'nfc_duration_ms',
+        'is_unusual_amount',
+        'is_unusual_time',
+        'sms_anomaly_6h',
+        'phone_changed_48h',
+        'device_risk_high',
+        'device_age_days',
+        'suspect_cash_deposit',
+        'new_beneficiary_after_self_transfer',
+        'age',
+        'city_pop',
+        'avg_amount_client',
+        'std_amount_client',
+        'typical_hour_client',
+        'device_risk'
+    ]
 
+def get_numeric_features() -> list:
+    """
+    Возвращает список числовых признаков (без 'category')
+    для моделей Logistic Regression и Random Forest.
+    """
+    all_features = get_expected_columns()
+    return [col for col in all_features if col != 'category']
+
+def get_features_for_iforest() -> list:
+    """
+    Возвращает список признаков для Isolation Forest
+    (с учётом one-hot encoding категории 'category').
+    """
+    numeric_features = get_numeric_features()
+    
+    categories = [
+        'category_grocery', 'category_entertainment', 'category_travel',
+        'category_online_shopping', 'category_restaurant', 'category_transport',
+        'category_other', 'category_cash_deposit'
+    ]
+    
+    return numeric_features + categories
 
 def generate_fraud_subset(
     subset_size: int = 500,
