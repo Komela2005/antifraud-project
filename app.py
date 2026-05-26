@@ -39,6 +39,42 @@ logging.basicConfig(
     level=logging.ERROR,
     format="%(asctime)s %(levelname)s %(message)s"
 )
+
+# =====================================================
+# ФУНКЦИИ ЗАГРУЗКИ ДАННЫХ (Back1)
+# =====================================================
+
+def load_or_generate_data(uploaded_file, sample_size, fraud_ratio):
+    """Загружает пользовательский CSV или генерирует синтетику"""
+    if uploaded_file is not None:
+        if not uploaded_file.name.endswith(".csv"):
+            st.error("Некорректное расширение файла")
+            return None, None
+        
+        df = pd.read_csv(uploaded_file)
+        required_columns = get_expected_columns() + ["is_fraud"]
+        missing = [c for c in required_columns if c not in df.columns]
+        if missing:
+            st.error(f"Отсутствуют колонки: {missing}")
+            return None, None
+        return df, "uploaded"
+    else:
+        with st.spinner("Генерация синтетических данных..."):
+            df = generate_fraud_subset(
+                subset_size=sample_size, full_size=2000, fraud_ratio=fraud_ratio,
+                label_noise=0.015, random_state=42, use_stratification=True
+            )
+        return df, "synthetic"
+
+
+def validate_data_types(df, feature_cols):
+    """Проверяет типы данных"""
+    wrong_types = []
+    for col in feature_cols:
+        if col in df.columns and not pd.api.types.is_numeric_dtype(df[col]):
+            wrong_types.append(col)
+    return wrong_types
+
 @st.cache_resource
 def load_all_models():
     models = {}
@@ -159,22 +195,11 @@ if "last_fraud_ratio" not in st.session_state:
 if compare_button:
     st.toast(f"Запуск анализа со сценарием: {selected_scenario}")
     try:
-        if uploaded_file is not None:
-            if not uploaded_file.name.endswith(".csv"):
-                st.error("Некорректное расширение файла")
-                st.stop()
-            classic_df = pd.read_csv(uploaded_file)
-            required_columns = get_expected_columns() + ["is_fraud"]
-            missing = [c for c in required_columns if c not in classic_df.columns]
-            if missing:
-                st.error(f"Отсутствуют колонки: {missing}")
-                st.stop()
-        else:
-            with st.spinner("Генерация синтетических данных..."):
-                classic_df = generate_fraud_subset(
-                    subset_size=sample_size, full_size=2000, fraud_ratio=fraud_ratio,
-                    label_noise=0.015, random_state=42, use_stratification=True
-                )
+        # Используем новую функцию загрузки/генерации
+        classic_df, source = load_or_generate_data(uploaded_file, sample_size, fraud_ratio)
+        if classic_df is None:
+            st.stop()
+        
         st.session_state.classic_df = classic_df
         st.session_state.stress_df = apply_stress(classic_df.copy(), selected_scenario)
         st.session_state.results_calculated = False
@@ -201,10 +226,7 @@ if st.session_state.classic_df is not None:
     st.dataframe(st.session_state.classic_df.head(), use_container_width=True)
 
     feature_cols = get_expected_columns()
-    wrong_types = []
-    for col in feature_cols:
-        if col in st.session_state.classic_df.columns and not pd.api.types.is_numeric_dtype(st.session_state.classic_df[col]):
-            wrong_types.append(col)
+    wrong_types = validate_data_types(st.session_state.classic_df, feature_cols)
     if wrong_types:
         st.error(f"Неверный тип данных в колонках: {wrong_types}")
         st.stop()
