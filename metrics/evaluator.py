@@ -11,15 +11,8 @@
 """
 
 import pandas as pd
-import numpy as np
-from sklearn.metrics import (
-    accuracy_score,
-    precision_score,
-    recall_score,
-    f1_score,
-    roc_auc_score,
-    confusion_matrix,
-)
+from sklearn.metrics import (accuracy_score, confusion_matrix, f1_score,
+                             precision_score, recall_score, roc_auc_score)
 
 
 def compute_metrics(y_true, y_pred, y_proba=None, cost_fp=1, cost_fn=10):

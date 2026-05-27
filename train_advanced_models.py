@@ -1,13 +1,15 @@
+import os
+import warnings
+
 import joblib
 import pandas as pd
-import numpy as np
-import os
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 from catboost import CatBoostClassifier
 from sklearn.ensemble import IsolationForest
-import warnings
-warnings.filterwarnings('ignore')
+from sklearn.metrics import (accuracy_score, f1_score, precision_score,
+                             recall_score, roc_auc_score)
+from sklearn.model_selection import train_test_split
+
+warnings.filterwarnings("ignore")
 
 print("=" * 70)
 print("ОБУЧЕНИЕ РАСШИРЕННЫХ МОДЕЛЕЙ (CatBoost + Isolation Forest)")
@@ -15,23 +17,23 @@ print("=" * 70)
 
 # 1. Загрузка данных
 print("\n1. Загрузка датасета...")
-df = pd.read_csv('data/fraud_transaction_dataset.csv')
+df = pd.read_csv("data/fraud_transaction_dataset.csv")
 print(f"   Форма данных: {df.shape}")
 print(f"   Доля фрода: {df['is_fraud'].mean():.4f}")
 
 # 2. Подготовка признаков
-exclude_cols = ['client_id', 'trans_date', 'merch_lat', 'merch_lon', 'is_fraud']
+exclude_cols = ["client_id", "trans_date", "merch_lat", "merch_lon", "is_fraud"]
 feature_cols = [col for col in df.columns if col not in exclude_cols]
 
 categorical_features = []
 for col in feature_cols:
-    if df[col].dtype == 'object' or df[col].dtype.name == 'category':
+    if df[col].dtype == "object" or df[col].dtype.name == "category":
         categorical_features.append(col)
 
 print(f"\n   Категориальные признаки: {categorical_features}")
 
 X = df[feature_cols].copy()
-y = df['is_fraud'].values
+y = df["is_fraud"].values
 
 print(f"   Всего признаков: {len(feature_cols)}")
 print(f"   Из них категориальных: {len(categorical_features)}")
@@ -40,7 +42,7 @@ print(f"   Из них категориальных: {len(categorical_features)}
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42, stratify=y
 )
-print(f"\n2. Разделение данных:")
+print("\n2. Разделение данных:")
 print(f"   Train: {X_train.shape[0]} строк")
 print(f"   Test: {X_test.shape[0]} строк")
 
@@ -57,7 +59,7 @@ cb_v1 = CatBoostClassifier(
     random_seed=42,
     verbose=False,
     class_weights=[1, 10],
-    cat_features=categorical_features
+    cat_features=categorical_features,
 )
 cb_v1.fit(X_train, y_train)
 print("✅ CatBoost v1 обучен")
@@ -85,7 +87,7 @@ cb_v2 = CatBoostClassifier(
     random_seed=42,
     verbose=False,
     class_weights=[1, 10],
-    cat_features=categorical_features
+    cat_features=categorical_features,
 )
 cb_v2.fit(X_train, y_train)
 print("✅ CatBoost v2 обучен")
@@ -114,11 +116,7 @@ X_train_numeric, X_test_numeric, y_train_numeric, y_test_numeric = train_test_sp
 print(f"  Числовых признаков после one-hot encoding: {X_numeric.shape[1]}")
 
 print("\nОбучение Isolation Forest...")
-iso_forest = IsolationForest(
-    n_estimators=100,
-    contamination=0.025,
-    random_state=42
-)
+iso_forest = IsolationForest(n_estimators=100, contamination=0.025, random_state=42)
 
 X_train_normal = X_train_numeric[y_train_numeric == 0]
 print(f"  Обучение только на нормальных транзакциях: {X_train_normal.shape[0]} строк")
@@ -140,11 +138,11 @@ print("\n" + "=" * 70)
 print("Сохранение моделей")
 print("=" * 70)
 
-os.makedirs('models/advanced_models', exist_ok=True)
+os.makedirs("models/advanced_models", exist_ok=True)
 
-joblib.dump(cb_v1, 'models/advanced_models/catboost_v1.pkl')
-joblib.dump(cb_v2, 'models/advanced_models/catboost_v2.pkl')
-joblib.dump(iso_forest, 'models/advanced_models/isolation_forest.pkl')
+joblib.dump(cb_v1, "models/advanced_models/catboost_v1.pkl")
+joblib.dump(cb_v2, "models/advanced_models/catboost_v2.pkl")
+joblib.dump(iso_forest, "models/advanced_models/isolation_forest.pkl")
 
 print("✅ Модели сохранены в папку 'models/advanced_models/':")
 print("   - catboost_v1.pkl")

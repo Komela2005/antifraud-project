@@ -9,12 +9,8 @@ from pathlib import Path
 # Добавляем путь к корневой папке проекта (чтобы импортировать модуль database)
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from database import (
-    create_experiment,
-    save_model_results,
-    save_experiment_params,
-    finish_experiment,
-)
+from database import (create_experiment, finish_experiment,
+                      save_experiment_params, save_model_results)
 
 
 def log_experiment(
