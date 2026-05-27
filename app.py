@@ -78,9 +78,8 @@ def load_or_generate_data(uploaded_file, sample_size, fraud_ratio):
 # =====================================================
  
 def prepare_data_for_lr_rf(X, feature_cols):
-    """Подготовка данных для Logistic Regression и Random Forest"""
-    return X[feature_cols].copy()
- 
+    # Добавляем недостающие колонки со значением 0
+    return X.reindex(columns=feature_cols, fill_value=0)
  
 def prepare_data_for_catboost(X):
     """Подготовка данных для CatBoost"""
@@ -101,18 +100,43 @@ def prepare_model_data(model_name, model, X):
     X — датафрейм без колонки is_fraud.
     """
     if model_name in ["Logistic Regression", "Random Forest v1", "Random Forest v2"]:
+        X = X.copy()
+    
+        # Если есть минутные признаки, создаём часовые (для совместимости со старыми моделями)
+        if 'transaction_minute' in X.columns and 'transaction_hour' not in X.columns:
+            X['transaction_hour'] = X['transaction_minute'] // 60
+        if 'typical_minute_client' in X.columns and 'typical_hour_client' not in X.columns:
+            X['typical_hour_client'] = X['typical_minute_client'] // 60
+        
+        # Для старых моделей могли отсутствовать time_deviation_min и is_contactless – добавим их с нулём
+        if 'time_deviation_min' not in X.columns:
+            X['time_deviation_min'] = 0
+        if 'is_contactless' not in X.columns:
+            X['is_contactless'] = 0
+        
+        # Получаем ожидаемые колонки из модели
         if hasattr(model, "feature_names_in_"):
             expected_cols = list(model.feature_names_in_)
         else:
-            expected_cols = [col for col in get_expected_columns() if col != "category"]
- 
-        missing_cols = set(expected_cols) - set(X.columns)
-        if missing_cols:
-            raise ValueError(f"Модель {model_name} ожидает колонки: {missing_cols}. Они отсутствуют в данных.")
- 
+            # fallback – используем старый список (например, get_expected_columns из генератора, который ещё не обновлён)
+            from data_generator.generator import get_expected_columns as old_expected
+            expected_cols = [col for col in old_expected() if col != 'category']
+            
         return prepare_data_for_lr_rf(X, expected_cols)
  
     elif "CatBoost" in model_name:
+        X = X.copy()
+        # Конвертируем минуты в часы, если модель ожидает часы
+        if 'transaction_minute' in X.columns and 'transaction_hour' not in X.columns:
+            X['transaction_hour'] = X['transaction_minute'] // 60
+        if 'typical_minute_client' in X.columns and 'typical_hour_client' not in X.columns:
+            X['typical_hour_client'] = X['typical_minute_client'] // 60
+        # Приводим категориальный признак
+        if "category" in X.columns:
+            X["category"] = X["category"].astype("category")
+        # Приводим к ожидаемым колонкам модели (если есть)
+        if hasattr(model, "feature_names_in_"):
+            expected_cols = list(model.feature_names_in_)
         return prepare_data_for_catboost(X)
  
     elif model_name == "Isolation Forest":
