@@ -228,18 +228,12 @@ def generate_fraud_dataset(
 # =====================================================
 
 def get_expected_columns() -> list:
-    """
-    Возвращает базовый список колонок-признаков (21 колонка).
-    
-    Включает:
-    - Все числовые признаки (20)
-    - Категориальный признак 'category' (для CatBoost и Isolation Forest)
-    """
+    """Возвращает список колонок-признаков, которые генерирует generate_fraud_dataset."""
     return [
         'amount',
-        'category',
-        'transaction_hour',
+        'transaction_minute',
         'day_of_week',
+        'time_deviation_min',
         'distance_km',
         'nfc_time_exceeded',
         'nfc_duration_ms',
@@ -251,11 +245,12 @@ def get_expected_columns() -> list:
         'device_age_days',
         'suspect_cash_deposit',
         'new_beneficiary_after_self_transfer',
+        'is_contactless',
         'age',
         'city_pop',
         'avg_amount_client',
         'std_amount_client',
-        'typical_hour_client',
+        'typical_minute_client',
         'device_risk'
     ]
 
