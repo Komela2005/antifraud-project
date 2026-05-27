@@ -2,7 +2,6 @@
 Тесты для стресс-сценариев (адаптировано под новый генератор)
 """
 
-
 from data_generator import generate_fraud_dataset
 from data_generator.stress_scenarios import (apply_stress,
                                              get_available_scenarios)
