@@ -516,6 +516,11 @@ if st.session_state.classic_df_full is not None:
                 models_used=selected_models,
             )
             for _, row in df_classic.iterrows():
+                # Проверка business_cost на NaN
+                business_cost = row["Business Cost"]
+                if pd.isna(business_cost) or business_cost is None:
+                    business_cost = 0
+                
                 save_model_results(
                     exp_id=exp_id,
                     model_name=row["Модель"],
@@ -523,9 +528,14 @@ if st.session_state.classic_df_full is not None:
                     precision=float(row["Precision"].rstrip("%")) / 100,
                     recall=float(row["Recall"].rstrip("%")) / 100,
                     f1=float(row["F1"].rstrip("%")) / 100,
-                    business_cost=row["Business Cost"],
+                    business_cost=business_cost,
                 )
             for _, row in df_stress.iterrows():
+                # Проверка business_cost на NaN
+                business_cost = row["Business Cost"]
+                if pd.isna(business_cost) or business_cost is None:
+                    business_cost = 0
+                
                 save_model_results(
                     exp_id=exp_id,
                     model_name=row["Модель"],
@@ -533,7 +543,7 @@ if st.session_state.classic_df_full is not None:
                     precision=float(row["Precision"].rstrip("%")) / 100,
                     recall=float(row["Recall"].rstrip("%")) / 100,
                     f1=float(row["F1"].rstrip("%")) / 100,
-                    business_cost=row["Business Cost"],
+                    business_cost=business_cost,
                 )
             finish_experiment(exp_id)
             st.success(f"Эксперимент сохранён в БД (ID: {exp_id})")
