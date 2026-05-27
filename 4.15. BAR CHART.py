@@ -1,3 +1,4 @@
+"""
 #  СРАВНЕНИЯ МОДЕЛЕЙ
 
 st.subheader("Сравнение моделей")
@@ -39,3 +40,4 @@ st.plotly_chart(
     fig_bar,
     use_container_width=True
 )
+"""
