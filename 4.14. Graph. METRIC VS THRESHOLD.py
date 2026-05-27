@@ -1,3 +1,4 @@
+"""
 st.subheader("Метрика vs порог")
 
 selected_metric = st.selectbox(
@@ -75,3 +76,4 @@ if show_details:
         fig_threshold,
         use_container_width=True
     )
+"""
