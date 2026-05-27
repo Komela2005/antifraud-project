@@ -7,8 +7,9 @@
 - get_column_info() - информация об ожидаемых колонках
 """
 
-import pandas as pd
 import numpy as np
+import pandas as pd
+
 from data_generator.generator import get_expected_columns
 
 
@@ -68,9 +69,7 @@ def validate_csv(df, require_target=False):
     for col in expected_columns:
         if col in df.columns and df[col].isnull().any():
             null_count = df[col].isnull().sum()
-            errors.append(
-                f"Столбец '{col}' содержит {null_count} пропущенных значений"
-            )
+            errors.append(f"Столбец '{col}' содержит {null_count} пропущенных значений")
 
     # 5. Проверка на бесконечные значения (inf, -inf)
     for col in expected_columns:

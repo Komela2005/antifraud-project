@@ -30,7 +30,9 @@ def load_all_models(models_path="models/"):
 
     # Загружаем каждую
     for model_path in model_files:
-        model_name = os.path.basename(model_path).replace(".joblib", "").replace(".pkl", "")
+        model_name = (
+            os.path.basename(model_path).replace(".joblib", "").replace(".pkl", "")
+        )
         try:
             models[model_name] = joblib.load(model_path)
             print(f"Загружена модель: {model_name}")
