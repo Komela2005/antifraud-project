@@ -1,3 +1,4 @@
+"""
 # ДЕТАЛЬНЫЙ АНАЛИЗ МОДЕЛИ
 
 st.subheader("Детальный анализ модели")
@@ -121,3 +122,4 @@ if st.button("Показать анализ"):
             "F1",
             f"{f1_score(y_classic, predictions, zero_division=0):.3f}"
         )
+"""
