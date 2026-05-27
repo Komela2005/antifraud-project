@@ -35,7 +35,7 @@ from data_generator.stress_scenarios import (
 # =====================================================
  
 logging.basicConfig(
-    filename="app.log",
+    filename="database/app.log",
     level=logging.ERROR,
     format="%(asctime)s %(levelname)s %(message)s"
 )
