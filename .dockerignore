@@ -1,8 +1,13 @@
 __pycache__/
 *.pyc
+
 .git/
+
 venv/
 .env/
+
 .streamlit/secrets.toml
+
 .ipynb_checkpoints/
+
 .DS_Store
