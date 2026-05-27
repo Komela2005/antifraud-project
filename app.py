@@ -7,7 +7,7 @@ import streamlit as st
 from sklearn.metrics import (confusion_matrix, f1_score, precision_score,
                              recall_score)
 
-from data_generator.generator import (generate_fraud_subset)
+from data_generator.generator import generate_fraud_subset
 from data_generator.stress_scenarios import (apply_stress,
                                              get_available_scenarios)
 from database import (create_experiment, finish_experiment, init_db,
