@@ -64,9 +64,7 @@ def generate_fraud_dataset(
         cv = np.random.lognormal(mean=-0.7, sigma=0.5)
         std_amount = avg_amount * cv
 
-        typical_hour = np.clip(np.random.normal(14, 3), 0, 23)
-        typical_minute = int(np.random.randint(0, 60))
-        typical_minute_client = typical_hour * 60 + typical_minute
+        typical_hour_client = np.clip(np.random.normal(14, 3), 0, 23).astype(int)
 
         device_risk = np.random.choice([0, 1, 2], p=[0.85, 0.10, 0.05])
         phone_last_change = None
@@ -81,7 +79,7 @@ def generate_fraud_dataset(
             'home_lon': lng,
             'avg_amount_client': avg_amount,
             'std_amount_client': std_amount,
-            'typical_minute_client': typical_minute_client,
+            'typical_hour_client': typical_hour_client,
             'device_risk': device_risk,
             'phone_last_change': phone_last_change,
         })
@@ -109,14 +107,14 @@ def generate_fraud_dataset(
     df = df.sort_values(['client_id', 'trans_date']).reset_index(drop=True)
     df = df.merge(clients, on='client_id', how='left')
 
-    df['transaction_minute'] = df['trans_date'].dt.hour * 60 + df['trans_date'].dt.minute
+    df['transaction_hour'] = df['trans_date'].dt.hour
     df['day_of_week'] = df['trans_date'].dt.dayofweek
 
     def cyclic_deviation(h1, h2):
-        diff = np.abs(h1 - h2)
-        return np.minimum(diff, 1440 - diff)
-    df['time_deviation_min'] = cyclic_deviation(df['transaction_minute'].values, df['typical_minute_client'].values)
-    df['is_unusual_time'] = (df['time_deviation_min'] > 420).astype(int)
+    	diff = np.abs(h1 - h2)
+    	return np.minimum(diff, 24 - diff)
+    df['time_deviation_hour'] = cyclic_deviation(df['transaction_hour'].values, df['typical_hour_client'].values)
+    df['is_unusual_time'] = (df['time_deviation_hour'] > 7).astype(int)
 
     categories = ['grocery', 'entertainment', 'travel', 'online_shopping', 'restaurant', 'transport', 'other', 'cash_deposit']
     def get_category(is_fraud):
@@ -210,12 +208,12 @@ def generate_fraud_dataset(
     flip_mask = np.random.rand(len(df)) < label_noise
     df.loc[flip_mask, 'is_fraud'] = 1 - df.loc[flip_mask, 'is_fraud']
 
-    feature_cols = ['amount', 'transaction_minute', 'day_of_week', 'time_deviation_min',
-                    'distance_km', 'nfc_time_exceeded', 'nfc_duration_ms', 'is_unusual_amount',
-                    'is_unusual_time', 'sms_anomaly_6h', 'phone_changed_48h', 'device_risk_high',
-                    'device_age_days', 'suspect_cash_deposit', 'new_beneficiary_after_self_transfer',
-                    'is_contactless', 'age', 'city_pop', 'avg_amount_client', 'std_amount_client',
-                    'typical_minute_client', 'device_risk']
+    feature_cols = ['amount', 'transaction_hour', 'day_of_week', 'time_deviation_hour',
+                'distance_km', 'nfc_time_exceeded', 'nfc_duration_ms', 'is_unusual_amount',
+                'is_unusual_time', 'sms_anomaly_6h', 'phone_changed_48h', 'device_risk_high',
+                'device_age_days', 'suspect_cash_deposit', 'new_beneficiary_after_self_transfer',
+                'is_contactless', 'age', 'city_pop', 'avg_amount_client', 'std_amount_client',
+                'typical_hour_client', 'device_risk', 'category']
 
     X = df[feature_cols].copy()
     y = df['is_fraud'].copy()
@@ -228,30 +226,14 @@ def generate_fraud_dataset(
 # =====================================================
 
 def get_expected_columns() -> list:
-    """Возвращает список колонок-признаков, которые генерирует generate_fraud_dataset."""
+    """Возвращает список всех колонок-признаков для валидации CSV"""
     return [
-        'amount',
-        'transaction_minute',
-        'day_of_week',
-        'time_deviation_min',
-        'distance_km',
-        'nfc_time_exceeded',
-        'nfc_duration_ms',
-        'is_unusual_amount',
-        'is_unusual_time',
-        'sms_anomaly_6h',
-        'phone_changed_48h',
-        'device_risk_high',
-        'device_age_days',
-        'suspect_cash_deposit',
-        'new_beneficiary_after_self_transfer',
-        'is_contactless',
-        'age',
-        'city_pop',
-        'avg_amount_client',
-        'std_amount_client',
-        'typical_minute_client',
-        'device_risk'
+        'amount', 'transaction_hour', 'day_of_week', 'time_deviation_hour',
+        'distance_km', 'nfc_time_exceeded', 'nfc_duration_ms', 'is_unusual_amount',
+        'is_unusual_time', 'sms_anomaly_6h', 'phone_changed_48h', 'device_risk_high',
+        'device_age_days', 'suspect_cash_deposit', 'new_beneficiary_after_self_transfer',
+        'is_contactless', 'age', 'city_pop', 'avg_amount_client', 'std_amount_client',
+        'typical_hour_client', 'device_risk', 'category'
     ]
 
 
