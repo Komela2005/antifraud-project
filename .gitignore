@@ -53,3 +53,4 @@ Dockerfile.local
 .ruff_cache/
 coverage.xml
 htmlcov/
+data/
