@@ -769,70 +769,75 @@ if st.session_state.classic_df_full is not None:
         # DETAILED ANALYSIS (4.16)
         # =================================================
         st.subheader("Детальный анализ модели")
-        detailed_model = st.selectbox(
-            "Выберите модель",
-            list(st.session_state.models.keys()),
-            key="detailed_model"
-        )
         
-        if st.button("Показать детальный анализ", key="btn_detailed"):
-            model = models[detailed_model]
-            
-            # Подготовка данных
-            X_processed = prepare_model_data(detailed_model, model, st.session_state.X_classic)
-            
-            # Предсказания
-            if hasattr(model, "predict_proba"):
-                probabilities = model.predict_proba(X_processed)[:, 1]
-                predictions = (probabilities >= threshold).astype(int)
-            else:
-                predictions = model.predict(X_processed)
-                if detailed_model == "Isolation Forest":
-                    predictions = (predictions == -1).astype(int)
-                probabilities = predictions
-            
-            # Confusion Matrix
-            st.markdown("### Confusion Matrix")
-            cm = confusion_matrix(st.session_state.y_classic, predictions)
-            cm_df = pd.DataFrame(
-                cm,
-                index=["Legit", "Fraud"],
-                columns=["Pred Legit", "Pred Fraud"]
+        if "models" in st.session_state and st.session_state.models is not None:
+            detailed_model = st.selectbox(
+                "Выберите модель",
+                list(st.session_state.models.keys()),
+                key="detailed_model"
             )
-            fig_cm = px.imshow(
-                cm_df,
-                text_auto=True,
-                aspect="auto",
-                title=f"Confusion Matrix — {detailed_model}"
-            )
-            st.plotly_chart(fig_cm, use_container_width=True)
             
-            # Распределение вероятностей
-            if hasattr(model, "predict_proba"):
-                st.markdown("### Распределение вероятностей")
-                probability_df = pd.DataFrame({
-                    "Вероятность фрода": probabilities,
-                    "Факт": st.session_state.y_classic
-                })
-                fig_hist = px.histogram(
-                    probability_df,
-                    x="Вероятность фрода",
-                    color="Факт",
-                    nbins=40,
-                    barmode="overlay",
-                    title=f"Распределение вероятностей — {detailed_model}"
+            if st.button("Показать детальный анализ", key="btn_detailed"):
+                model = st.session_state.models[detailed_model]
+                
+                # Подготовка данных
+                X_processed = prepare_model_data(detailed_model, model, st.session_state.X_classic)
+                
+                # Предсказания
+                if hasattr(model, "predict_proba"):
+                    probabilities = model.predict_proba(X_processed)[:, 1]
+                    predictions = (probabilities >= threshold).astype(int)
+                else:
+                    predictions = model.predict(X_processed)
+                    if detailed_model == "Isolation Forest":
+                        predictions = (predictions == -1).astype(int)
+                    probabilities = predictions
+                
+                # Confusion Matrix
+                st.markdown("### Confusion Matrix")
+                cm = confusion_matrix(st.session_state.y_classic, predictions)
+                cm_df = pd.DataFrame(
+                    cm,
+                    index=["Legit", "Fraud"],
+                    columns=["Pred Legit", "Pred Fraud"]
                 )
-                st.plotly_chart(fig_hist, use_container_width=True)
-            
-            # Основные метрики
-            st.markdown("### Основные метрики")
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric("Precision", f"{precision_score(st.session_state.y_classic, predictions, zero_division=0):.3f}")
-            with col2:
-                st.metric("Recall", f"{recall_score(st.session_state.y_classic, predictions, zero_division=0):.3f}")
-            with col3:
-                st.metric("F1", f"{f1_score(st.session_state.y_classic, predictions, zero_division=0):.3f}")
+                fig_cm = px.imshow(
+                    cm_df,
+                    text_auto=True,
+                    aspect="auto",
+                    title=f"Confusion Matrix — {detailed_model}"
+                )
+                st.plotly_chart(fig_cm, use_container_width=True)
+                
+                # Распределение вероятностей
+                if hasattr(model, "predict_proba"):
+                    st.markdown("### Распределение вероятностей")
+                    probability_df = pd.DataFrame({
+                        "Вероятность фрода": probabilities,
+                        "Факт": st.session_state.y_classic
+                    })
+                    fig_hist = px.histogram(
+                        probability_df,
+                        x="Вероятность фрода",
+                        color="Факт",
+                        nbins=40,
+                        barmode="overlay",
+                        title=f"Распределение вероятностей — {detailed_model}"
+                    )
+                    st.plotly_chart(fig_hist, use_container_width=True)
+                
+                # Основные метрики
+                st.markdown("### Основные метрики")
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Precision", f"{precision_score(st.session_state.y_classic, predictions, zero_division=0):.3f}")
+                with col2:
+                    st.metric("Recall", f"{recall_score(st.session_state.y_classic, predictions, zero_division=0):.3f}")
+                with col3:
+                    st.metric("F1", f"{f1_score(st.session_state.y_classic, predictions, zero_division=0):.3f}")
+        else:
+            st.info("Сначала запустите анализ моделей")
+
 
         # =================================================
         # ROC CURVE
