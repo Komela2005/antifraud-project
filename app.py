@@ -829,7 +829,7 @@ if st.session_state.classic_df_full is not None:
                 
                 # Основные метрики
                 st.markdown("### Основные метрики")
-                col1, col2, col3 = st.columns(3)
+                col1, col2, col3, col4 = st.columns(4)
                 with col1:
                     st.metric("Precision", f"{precision_score(st.session_state.y_classic, predictions, zero_division=0):.3f}")
                 with col2:
