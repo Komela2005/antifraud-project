@@ -5,7 +5,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
-from sklearn.metrics import (auc, confusion_matrix, f1_score, precision_score,
+from sklearn.metrics import (accuracy_score, auc, confusion_matrix, f1_score, precision_score,
                              recall_score, roc_curve)
 
 from data_generator.generator import generate_fraud_subset
@@ -836,6 +836,9 @@ if st.session_state.classic_df_full is not None:
                     st.metric("Recall", f"{recall_score(st.session_state.y_classic, predictions, zero_division=0):.3f}")
                 with col3:
                     st.metric("F1", f"{f1_score(st.session_state.y_classic, predictions, zero_division=0):.3f}")
+                with col4:
+                    accuracy = accuracy_score(st.session_state.y_classic, predictions)
+                    st.metric("Accuracy", f"{accuracy:.3f}")
         else:
             st.info("Сначала запустите анализ моделей")
 
