@@ -8,7 +8,7 @@ import streamlit as st
 DB_PATH = Path(__file__).parent.parent / "database" / "experiments.db"
 
 st.set_page_config(page_title="Experiment History", layout="wide")
-st.title("📊 Experiment History")
+st.title("Experiment History")
 
 # Инициализация БД
 try:
@@ -17,7 +17,7 @@ try:
     from database.db_manager import init_db
     init_db()
 except Exception as e:
-    st.error(f"❌ Ошибка инициализации БД: {e}")
+    st.error(f"Ошибка инициализации БД: {e}")
     st.stop()
 
 # Загрузка и отображение данных
@@ -30,7 +30,7 @@ try:
     )
     
     if experiments.empty:
-        st.info("📭 Нет экспериментов. Сначала запустите анализ.")
+        st.info("Нет экспериментов. Сначала запустите анализ.")
     else:
         st.sidebar.header("🔍 Фильтры")
         
@@ -81,10 +81,10 @@ try:
         
         # Экспорт
         csv = results.to_csv(index=False).encode("utf-8")
-        st.download_button("📥 Скачать CSV", csv, "history.csv", "text/csv")
+        st.download_button("Скачать CSV", csv, "history.csv", "text/csv")
     
 except Exception as e:
-    st.error(f"❌ Ошибка загрузки истории: {e}")
+    st.error(f"Ошибка загрузки истории: {e}")
     
 finally:
     if 'conn' in locals():
