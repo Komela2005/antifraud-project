@@ -639,6 +639,7 @@ if st.session_state.classic_df_full is not None:
         st.session_state.last_selected_models = selected_models.copy()
         st.session_state.last_threshold = threshold
         st.session_state.results_calculated = True
+        st.session_state.models = models
 
     # =================================================
     # DISPLAY RESULTS
@@ -730,7 +731,7 @@ if st.session_state.classic_df_full is not None:
             threshold_values = [x / 100 for x in range(10, 95, 5)]
             metric_plot_data = []
             
-            for name, model in models.items():
+            for name, model in st.session_state.models.items():
                 try:
                     X_classic_processed = prepare_model_data(name, model, st.session_state.X_classic)
                     
@@ -768,10 +769,9 @@ if st.session_state.classic_df_full is not None:
         # DETAILED ANALYSIS (4.16)
         # =================================================
         st.subheader("Детальный анализ модели")
-        
         detailed_model = st.selectbox(
             "Выберите модель",
-            list(models.keys()),
+            list(st.session_state.models.keys()),
             key="detailed_model"
         )
         
