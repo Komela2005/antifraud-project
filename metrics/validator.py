@@ -57,9 +57,13 @@ def validate_csv(df, require_target=False):
         )
 
     # 3. Проверка типов данных (должны быть числовые)
+    # Список колонок, которые могут быть нечисловыми
+    NON_NUMERIC_COLUMNS = ['category']
+
+    # 3. Проверка типов данных (должны быть числовые, кроме исключений)
     for col in expected_columns:
         if col in df.columns:
-            if not pd.api.types.is_numeric_dtype(df[col]):
+            if col not in NON_NUMERIC_COLUMNS and not pd.api.types.is_numeric_dtype(df[col]):
                 errors.append(
                     f"Столбец '{col}' должен быть числовым, "
                     f"но получен тип {df[col].dtype}"
