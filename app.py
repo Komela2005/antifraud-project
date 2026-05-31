@@ -790,11 +790,12 @@ if st.session_state.classic_df_full is not None:
                 stress_scenario=selected_scenario,
                 models_used=selected_models,
             )
+            
             for _, row in df_classic.iterrows():
                 business_cost = row["Business Cost"]
                 if pd.isna(business_cost) or business_cost is None:
                     business_cost = 0
-
+                
                 save_model_results(
                     exp_id=exp_id,
                     model_name=row["Model"],
@@ -804,11 +805,12 @@ if st.session_state.classic_df_full is not None:
                     f1=float(row["F1"].rstrip("%")) / 100,
                     business_cost=business_cost,
                 )
+            
             for _, row in df_stress.iterrows():
                 business_cost = row["Business Cost"]
                 if pd.isna(business_cost) or business_cost is None:
                     business_cost = 0
-
+                
                 save_model_results(
                     exp_id=exp_id,
                     model_name=row["Model"],
@@ -818,10 +820,11 @@ if st.session_state.classic_df_full is not None:
                     f1=float(row["F1"].rstrip("%")) / 100,
                     business_cost=business_cost,
                 )
+            
             finish_experiment(exp_id)
             st.success(f"Experiment saved to database (ID: {exp_id})")
+            
         except Exception as db_err:
             logging.error(f"DB error: {db_err}")
             st.warning("Could not save results to database")
-
         st.success("Analysis completed")
