@@ -30,53 +30,112 @@ def init_db():
         cursor.executescript(schema_sql)
         conn.commit()
 
-    print("✅ База данных инициализирована")
+    print("База данных инициализирована")
 
 
-def create_experiment(experiment_name: str, description: str = None) -> int:
+def create_experiment(
+    experiment_name: str = None,
+    description: str = None,
+    sample_size: int = None,
+    threshold: float = None,
+    fraud_ratio: float = None,
+    stress_scenario: str = None,
+    models_used: list = None
+) -> int:
     """
     Создаёт новый эксперимент
 
     Parameters:
     -----------
-    experiment_name : str
+    experiment_name : str, optional
         Название эксперимента
     description : str, optional
         Описание эксперимента
+    sample_size : int, optional
+        Размер выборки
+    threshold : float, optional
+        Порог классификации
+    fraud_ratio : float, optional
+        Доля мошеннических транзакций
+    stress_scenario : str, optional
+        Стресс-сценарий
+    models_used : list, optional
+        Список использованных моделей
 
     Returns:
     --------
     int : ID созданного эксперимента
     """
+    from datetime import datetime
+    
+    # Формируем название, если не указано
+    if experiment_name is None:
+        experiment_name = f"Experiment_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    
+    # Формируем описание из параметров
+    if description is None:
+        description = f"sample_size={sample_size}, threshold={threshold}, fraud_ratio={fraud_ratio}, scenario={stress_scenario}, models={models_used}"
+    
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute(
             """
             INSERT INTO experiments (experiment_name, description, status)
             VALUES (?, ?, 'running')
-        """,
+            """,
             (experiment_name, description),
         )
         conn.commit()
-        return cursor.lastrowid
+        
+        experiment_id = cursor.lastrowid
+        
+        # Сохраняем параметры в таблицу experiment_params
+        params = {
+            'sample_size': sample_size,
+            'threshold': threshold,
+            'fraud_ratio': fraud_ratio,
+            'stress_scenario': stress_scenario,
+            'models_used': str(models_used)
+        }
+        save_experiment_params(experiment_id, params)
+        
+        return experiment_id
 
 
 def save_model_results(
-    experiment_id: int, model_name: str, scenario: str, metrics: dict
+    exp_id: int,
+    model_name: str,
+    mode: str,
+    precision: float,
+    recall: float,
+    f1: float,
+    business_cost: float,
+    accuracy: float = None,
+    roc_auc: float = None
 ) -> None:
     """
     Сохраняет результаты модели в базу данных
 
     Parameters:
     -----------
-    experiment_id : int
+    exp_id : int
         ID эксперимента
     model_name : str
         Название модели
-    scenario : str
-        Название сценария (normal, imbalance и т.д.)
-    metrics : dict
-        Словарь с метриками (accuracy, precision, recall, f1_score, roc_auc, business_cost)
+    mode : str
+        Режим ('classic' или 'stress')
+    precision : float
+        Точность
+    recall : float
+        Полнота
+    f1 : float
+        F1-мера
+    business_cost : float
+        Бизнес-стоимость
+    accuracy : float, optional
+        Точность (accuracy)
+    roc_auc : float, optional
+        ROC-AUC
     """
     with get_connection() as conn:
         cursor = conn.cursor()
@@ -84,19 +143,19 @@ def save_model_results(
             """
             INSERT INTO model_results (
                 experiment_id, model_name, scenario,
-                accuracy, precision, recall, f1_score, roc_auc, business_cost
+                precision, recall, f1_score, business_cost, accuracy, roc_auc
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
+            """,
             (
-                experiment_id,
+                exp_id,
                 model_name,
-                scenario,
-                metrics.get("accuracy"),
-                metrics.get("precision"),
-                metrics.get("recall"),
-                metrics.get("f1_score"),
-                metrics.get("roc_auc"),
-                metrics.get("business_cost"),
+                mode,
+                precision,
+                recall,
+                f1,
+                business_cost,
+                accuracy,
+                roc_auc,
             ),
         )
         conn.commit()
@@ -116,13 +175,14 @@ def save_experiment_params(experiment_id: int, params: dict) -> None:
     with get_connection() as conn:
         cursor = conn.cursor()
         for param_name, param_value in params.items():
-            cursor.execute(
-                """
-                INSERT INTO experiment_params (experiment_id, param_name, param_value)
-                VALUES (?, ?, ?)
-            """,
-                (experiment_id, param_name, str(param_value)),
-            )
+            if param_value is not None:
+                cursor.execute(
+                    """
+                    INSERT INTO experiment_params (experiment_id, param_name, param_value)
+                    VALUES (?, ?, ?)
+                    """,
+                    (experiment_id, param_name, str(param_value)),
+                )
         conn.commit()
 
 
@@ -144,7 +204,7 @@ def finish_experiment(experiment_id: int, status: str = "completed") -> None:
             UPDATE experiments 
             SET status = ? 
             WHERE id = ?
-        """,
+            """,
             (status, experiment_id),
         )
         conn.commit()
@@ -232,7 +292,7 @@ def get_experiment_summary(experiment_id: int) -> dict:
             SELECT COUNT(DISTINCT model_name) as model_count 
             FROM model_results 
             WHERE experiment_id = ?
-        """,
+            """,
             (experiment_id,),
         )
         model_count = cursor.fetchone()["model_count"]
@@ -243,7 +303,7 @@ def get_experiment_summary(experiment_id: int) -> dict:
             SELECT COUNT(*) as total_results 
             FROM model_results 
             WHERE experiment_id = ?
-        """,
+            """,
             (experiment_id,),
         )
         total_results = cursor.fetchone()["total_results"]
@@ -280,9 +340,13 @@ if __name__ == "__main__":
 
     # Создание эксперимента
     exp_id = create_experiment(
-        experiment_name="Тестовый запуск", description="Проверка работы БД"
+        experiment_name="Тестовый запуск",
+        description="Проверка работы БД",
+        sample_size=1000,
+        fraud_ratio=0.01,
+        stress_scenario="normal"
     )
-    print(f"✅ Создан эксперимент с ID: {exp_id}")
+    print(f"Создан эксперимент с ID: {exp_id}")
 
     # Сохранение параметров
     save_experiment_params(
@@ -291,17 +355,15 @@ if __name__ == "__main__":
 
     # Сохранение результатов модели
     save_model_results(
-        experiment_id=exp_id,
+        exp_id=exp_id,
         model_name="Logistic Regression",
-        scenario="normal",
-        metrics={
-            "accuracy": 0.95,
-            "precision": 0.89,
-            "recall": 0.92,
-            "f1_score": 0.90,
-            "roc_auc": 0.97,
-            "business_cost": 1250,
-        },
+        mode="classic",
+        precision=0.89,
+        recall=0.92,
+        f1=0.90,
+        business_cost=1250,
+        accuracy=0.95,
+        roc_auc=0.97
     )
 
     # Завершение эксперимента
@@ -309,15 +371,15 @@ if __name__ == "__main__":
 
     # Получение результатов
     results = get_experiment_results(exp_id)
-    print("\n📊 Результаты:")
+    print("\nРезультаты:")
     print(results)
 
     # Список экспериментов
     experiments = get_all_experiments()
-    print("\n📋 Все эксперименты:")
+    print("\nВсе эксперименты:")
     print(experiments)
 
     # Сводка
     summary = get_experiment_summary(exp_id)
-    print("\n📈 Сводка:")
+    print("\nСводка:")
     print(summary)
