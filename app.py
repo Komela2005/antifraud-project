@@ -105,45 +105,90 @@ TREE_IMPORTANCE_MODELS = {
 
 
 def load_or_generate_data(uploaded_file, sample_size, fraud_ratio):
-    """Load user CSV or generate synthetic data.
-
-    Returns
-    -------
-    tuple[pd.DataFrame | None, str | None]
-        (dataframe, source) where source is "uploaded" or "synthetic",
-        or (None, None) on validation failure.
-    """
-    if uploaded_file is not None:
+    """Load user CSV or generate synthetic data with user-friendly error messages."""
+    
+    # СЛУЧАЙ 1: Файл не загружен → генерируем синтетику
+    if uploaded_file is None:
+        with st.spinner("Generating synthetic data..."):
+            try:
+                df = generate_fraud_subset(
+                    subset_size=sample_size,
+                    full_size=2000,
+                    fraud_ratio=fraud_ratio,
+                    label_noise=0.015,
+                    random_state=42,
+                    use_stratification=True,
+                )
+                return df, "synthetic"
+            except Exception as e:
+                st.error(f"Failed to generate synthetic data: {str(e)}")
+                return None, None
+    
+    # СЛУЧАЙ 2: Файл загружен → проверяем и загружаем
+    try:
+        # Проверка 1: Расширение файла
         if not uploaded_file.name.endswith(".csv"):
-            st.error("Invalid file extension")
+            st.error("**Invalid file format**\n\nPlease upload a **.csv** file.")
             return None, None
-
-        df = pd.read_csv(uploaded_file)
-
+        
+        # Проверка 2: Размер файла
+        if uploaded_file.size == 0:
+            st.error("**Empty file**\n\nThe uploaded file is empty.")
+            return None, None
+        if uploaded_file.size > 50 * 1024 * 1024:  # 50 MB
+            st.error("**File too large**\n\nFile size exceeds 50 MB.")
+            return None, None
+        
+        # Попытка чтения файла
+        try:
+            df = pd.read_csv(uploaded_file)
+        except pd.errors.EmptyDataError:
+            st.error("**Empty CSV file**\n\nThe file contains no data.")
+            return None, None
+        except pd.errors.ParserError:
+            st.error("**CSV parsing error**\n\nThe file is not a valid CSV.")
+            return None, None
+        except Exception as e:
+            st.error(f"**Failed to read CSV file**\n\nError: {str(e)}")
+            return None, None
+        
+        # Проверка 3: Достаточно ли строк
+        if len(df) == 0:
+            st.error("**No data rows**\n\nThe CSV file has headers but no data.")
+            return None, None
+        if len(df) < 10:
+            st.warning(f"**Very small dataset**\n\nOnly {len(df)} rows. At least 100 rows recommended.")
+        
+        # Проверка 4: Валидация колонок через metrics.validator
         from metrics.validator import validate_csv
-
         is_valid, errors, warnings = validate_csv(df, require_target=False)
-
+        
         for warning in warnings:
-            st.warning(warning)
-
+            st.warning(f"{warning}")
+        
         if not is_valid:
+            st.error("**CSV validation failed**\n\n**Problems found:**")
             for error in errors:
-                st.error(error)
+                st.markdown(f"- {error}")
             return None, None
-
+        
+        # Проверка 5: Наличие целевой переменной
+        if "is_fraud" not in df.columns:
+            st.info("**No 'is_fraud' column**\n\nModels will make predictions but metrics will not be available.")
+        else:
+            # Проверка значений в is_fraud
+            unique_values = df["is_fraud"].unique()
+            if not set(unique_values).issubset({0, 1}):
+                st.error(f"**Invalid 'is_fraud' values**\n\nOnly 0 and 1 allowed. Found: {unique_values}")
+                return None, None
+        
+        st.success(f"**File loaded successfully**\n\n**File:** {uploaded_file.name}\n**Rows:** {len(df)} | **Columns:** {len(df.columns)}")
         return df, "uploaded"
-
-    with st.spinner("Generating synthetic data..."):
-        df = generate_fraud_subset(
-            subset_size=sample_size,
-            full_size=2000,
-            fraud_ratio=fraud_ratio,
-            label_noise=0.015,
-            random_state=42,
-            use_stratification=True,
-        )
-    return df, "synthetic"
+    
+    except Exception as e:
+        st.error(f"**Unexpected error**\n\n{str(e)}")
+        logging.error(f"Unexpected error in load_or_generate_data: {e}")
+        return None, None
 
 
 # ---------------------------------------------------------------------------
