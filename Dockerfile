@@ -3,12 +3,16 @@ FROM python:3.10-slim
 WORKDIR /app
 
 COPY requirements.txt .
+
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+# Копируем только необходимые части проекта
+COPY app.py .
 
-# Директория /app/database появится автоматически через volume
-# Код сам создаст папку при первом запуске (через Path.mkdir)
+COPY data_generator ./data_generator
+COPY metrics ./metrics
+COPY database ./database
+COPY models ./models
 
 EXPOSE 8501
 
