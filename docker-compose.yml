@@ -1,16 +1,21 @@
 services:
   antifraud-app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+
     container_name: antifraud-streamlit
+
     ports:
       - "8501:8501"
+
     volumes:
-      # Монтируем всю папку database
-      # Чтобы и db_manager.py, и history.py нашли БД
+      # SQLite БД и логирование
       - ./database:/app/database
-      # Для моделей
+
+      # Предобученные модели
       - ./models:/app/models
-      # Для логов
-      - ./logs:/app/logs
+
     working_dir: /app
+
     restart: unless-stopped
