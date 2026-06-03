@@ -1,13 +1,18 @@
-__pycache__/
+.git
+.github
+
+.venv
+venv
+
+__pycache__
+.pytest_cache
+
 *.pyc
+*.pyo
 
-.git/
+docs
+tests
 
-venv/
-.env/
+*.ipynb
 
-.streamlit/secrets.toml
-
-.ipynb_checkpoints/
-
-.DS_Store
+README.md
