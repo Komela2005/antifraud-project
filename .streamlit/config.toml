@@ -1,17 +1,12 @@
 [theme]
-# Предположительные основные цвета для персонализации приложения.
-primaryColor = "#F63366"  # Цвет кнопок и акцентов
-backgroundColor = "#FFFFFF"
-secondaryBackgroundColor = "#84888f"  # Цвет боковой панели.
-textColor = "#262730"
+primaryColor="#dc719c"
+backgroundColor="#f1d8e3"
+secondaryBackgroundColor="#dcacc1"
+textColor="#262730"
+font="monospace"
 
 [server]
-# Настройки для деплоя и разработки.
-
 maxUploadSize = 400  # Максимальный размер загружаемого файла, МБ
-# Адрес, по которому будет доступно приложение в облаке Streamlit.
-# headless = true # Обычно не требуется для Streamlit Cloud.
 
 [browser]
-# Название вкладки браузера.
 pageTitle = "Фрод-мониторинг: Выбор модели"
