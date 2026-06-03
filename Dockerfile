@@ -3,12 +3,12 @@ FROM python:3.10-slim
 WORKDIR /app
 
 COPY requirements.txt .
-
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-RUN mkdir -p /app/database
+# Директория /app/database появится автоматически через volume
+# Код сам создаст папку при первом запуске (через Path.mkdir)
 
 EXPOSE 8501
 

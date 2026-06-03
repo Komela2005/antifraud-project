@@ -1,17 +1,16 @@
-version: "3.9"
-
 services:
-
   antifraud-app:
-
     build: .
-
     container_name: antifraud-streamlit
-
     ports:
       - "8501:8501"
-
     volumes:
+      # Монтируем всю папку database
+      # Чтобы и db_manager.py, и history.py нашли БД
       - ./database:/app/database
-
+      # Для моделей
+      - ./models:/app/models
+      # Для логов
+      - ./logs:/app/logs
+    working_dir: /app
     restart: unless-stopped
