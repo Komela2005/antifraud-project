@@ -485,6 +485,10 @@ compare_button = st.sidebar.button(
     help="Start model evaluation",
 )
 
+st.sidebar.markdown("---")
+reset_button = st.sidebar.button("Сбросить всё", type="secondary", help="Очистить данные и вернуться к синтетическим")
+
+
 # ---------------------------------------------------------------------------
 # SESSION STATE INITIALISATION
 # ---------------------------------------------------------------------------
@@ -512,6 +516,16 @@ for _key, _val in _SESSION_DEFAULTS.items():
 # ---------------------------------------------------------------------------
 # MAIN LOGIC — DATA LOADING / GENERATION
 # ---------------------------------------------------------------------------
+
+if reset_button:
+        st.session_state.classic_df_full = None
+        st.session_state.X_classic = None
+        st.session_state.y_classic = None
+        st.session_state.results_classic = None
+        st.session_state.results_stress = None
+        st.session_state.results_calculated = False
+        st.toast("Данные сброшены. Используются синтетические данные.")
+        st.rerun()
 
 if compare_button:
     st.toast(f"Starting analysis with scenario: {selected_scenario}")
