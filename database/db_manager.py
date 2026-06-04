@@ -40,7 +40,7 @@ def create_experiment(
     threshold: float = None,
     fraud_ratio: float = None,
     stress_scenario: str = None,
-    models_used: list = None
+    models_used: list = None,
 ) -> int:
     """
     Создаёт новый эксперимент
@@ -67,15 +67,15 @@ def create_experiment(
     int : ID созданного эксперимента
     """
     from datetime import datetime
-    
+
     # Формируем название, если не указано
     if experiment_name is None:
         experiment_name = f"Experiment_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    
+
     # Формируем описание из параметров
     if description is None:
         description = f"sample_size={sample_size}, threshold={threshold}, fraud_ratio={fraud_ratio}, scenario={stress_scenario}, models={models_used}"
-    
+
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute(
@@ -86,19 +86,19 @@ def create_experiment(
             (experiment_name, description),
         )
         conn.commit()
-        
+
         experiment_id = cursor.lastrowid
-        
+
         # Сохраняем параметры в таблицу experiment_params
         params = {
-            'sample_size': sample_size,
-            'threshold': threshold,
-            'fraud_ratio': fraud_ratio,
-            'stress_scenario': stress_scenario,
-            'models_used': str(models_used)
+            "sample_size": sample_size,
+            "threshold": threshold,
+            "fraud_ratio": fraud_ratio,
+            "stress_scenario": stress_scenario,
+            "models_used": str(models_used),
         }
         save_experiment_params(experiment_id, params)
-        
+
         return experiment_id
 
 
@@ -111,7 +111,7 @@ def save_model_results(
     f1: float,
     business_cost: float,
     accuracy: float = None,
-    roc_auc: float = None
+    roc_auc: float = None,
 ) -> None:
     """
     Сохраняет результаты модели в базу данных
@@ -344,7 +344,7 @@ if __name__ == "__main__":
         description="Проверка работы БД",
         sample_size=1000,
         fraud_ratio=0.01,
-        stress_scenario="normal"
+        stress_scenario="normal",
     )
     print(f"Создан эксперимент с ID: {exp_id}")
 
@@ -363,7 +363,7 @@ if __name__ == "__main__":
         f1=0.90,
         business_cost=1250,
         accuracy=0.95,
-        roc_auc=0.97
+        roc_auc=0.97,
     )
 
     # Завершение эксперимента
