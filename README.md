@@ -44,10 +44,10 @@
 
 ```bash
 # Клонируйте репозиторий
-git clone https://github.com/yourteam/fraud-model-comparator.git
-cd fraud-model-comparator
+git clone https://github.com/Eldrich1Herz/antifraud-project
+cd antifraud-project
 
-# Создайте и активируйте виртуальное окружение
+# Опционально создайте и активируйте виртуальное окружение
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 
@@ -56,6 +56,36 @@ pip install -r requirements.txt
 
 # Запустите приложение
 streamlit run app.py
+```
+
+# Инструкция к Docker
+
+**Детали Dockerfile:**
+- Базовый образ python:3.10-slim для минимального размера
+- Рабочая директория /app
+- Установка зависимостей с кэшированием слоя
+- Порт 8501 для Streamlit
+- Запуск app.py с адресом 0.0.0.0 для доступа извне контейнера
+
+```bash
+Сборка образа:
+docker build -t antifraud-platform
+
+Запуск контейнера:
+docker run -p 8501:8501 antifraud-platform
+
+Приложение будет доступно по адресу:
+http://localhost:8501
+
+Остановка контейнера:
+docker stop <container_id>
+
+Если не сработает или будет слишком долго, то
+Запуск:
+docker-compose up -d
+
+Остановка:
+docker-compose down
 ```
 
 # Потенциальная структура репозитория
