@@ -144,9 +144,9 @@ docker-compose down
 
 Милослава Рогушина - Product Owner  
 Тавабилова - ML Engineer (LR, RF, метрики)  
-Зайцева ML Engineer - (CatBoost, SHAP)  
+Зайцева - ML Engineer (CatBoost, SHAP)  
 Сахарова - Backend Developer (генератор данных)  
-Денисенко - Backend Developer - (метрики, интеграция)   
+Денисенко - Backend Developer (метрики, интеграция)   
 Печерица - Frontend / UI (Streamlit)  
 Елизавета Смирнова - DevOps (CI/CD, деплой)  
 
@@ -154,6 +154,6 @@ docker-compose down
 
 ---
 
-Разработано в рамках учебного проекта по дисциплине «Проектирование программных систем», 2026 г.
-Постоянная ссылка на репозиторий: https://github.com/Eldrich1Herz/antifraud-project
-Постоянная ссылка на сайт: 
+Разработано в рамках учебного проекта по дисциплине «Проектирование программных систем», 2026 г.  
+Постоянная ссылка на репозиторий: https://github.com/Eldrich1Herz/antifraud-project. 
+Постоянная ссылка на сайт:  
