@@ -156,4 +156,4 @@ docker-compose down
 
 Разработано в рамках учебного проекта по дисциплине «Проектирование программных систем», 2026 г.  
 Постоянная ссылка на репозиторий: https://github.com/Eldrich1Herz/antifraud-project.  
-Постоянная ссылка на сайт:  
+Постоянная ссылка на сайт: https://antifraud-project-pspsnttevca72umh97qvwm.streamlit.app. 
