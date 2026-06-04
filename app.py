@@ -409,9 +409,10 @@ with st.expander("Stress scenarios information"):
 st.sidebar.header("Settings")
 st.sidebar.markdown("---")
 st.sidebar.markdown(
-    "📖 [Руководство по загрузке данных]"
+    "[Руководство по загрузке данных]"
     "(https://github.com/Eldrich1Herz/antifraud-project/blob/develop/docs/user_guide.md)"
 )
+st.sidebar.markdown("[Обучающее видео по работе с платформой](https://disk.yandex.ru/i/JhEKg3bUTeLWJw)")
 
 sample_size = st.sidebar.slider(
     "Sample size",
