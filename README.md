@@ -140,7 +140,7 @@ docker-compose down
 - Все графики интерактивны: можно зумировать, выбирать порог, переключать модели.
 - Результаты сравнения можно скачать в CSV (кнопка «Скачать результаты»).  
 
-**Обучающее видео по работе с поатформой:** https://disk.yandex.ru/i/JhEKg3bUTeLWJw. 
+**Обучающее видео по работе с платформой:** https://disk.yandex.ru/i/JhEKg3bUTeLWJw. 
 **Руководство по загрузке данных:** https://github.com/Eldrich1Herz/antifraud-project/blob/develop/docs/user_guide.md. 
 
 # Команда и роли
