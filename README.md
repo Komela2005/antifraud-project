@@ -37,7 +37,7 @@
 | Визуализация     | Plotly, matplotlib                                                |
 | Сериализация     | joblib                                                            |
 | Тестирование     | pytest                                                            |
-| Окружение и деплой| Streamlit Cloud, Docker (опционально), Git LFS                     |
+| Окружение и деплой| Streamlit Cloud, Git LFS                                         |
 | CI/CD            | GitHub Actions                                                    |
 
 ## Установка и локальный запуск
@@ -61,16 +61,30 @@ streamlit run app.py
 # Потенциальная структура репозитория
 
 ```
-├── app.py                     # Точка входа Streamlit
-├── models/                    # Сохранённые модели (.joblib)
-├── data_generator/            # Генератор синтетических данных и стресс-сценарии
-├── metrics/                   # Модуль расчёта метрик и cost matrix
-├── ui/                        # Компоненты интерфейса (вспомогательные функции)
-├── tests/                     # Unit-тесты (pytest)
-├── requirements.txt           # Зависимости
+├── .github/
 ├── .streamlit/
 │   └── config.toml            # Настройки темы и сервера Streamlit
-└── README.md
+├── data_generator/            # Генератор синтетических данных и стресс-сценарии
+├── database/
+├── docs/
+├── metrics/                   # Модуль расчёта метрик и cost matrix 
+├── models/                    # Сохранённые модели (.joblib)
+├── pages/
+├── tests/                     # Unit-тесты (pytest)
+├── ui/                        # Компоненты интерфейса (вспомогательные функции)
+├── .dockerignore
+├── .gitattributes
+├── .gitignore
+├── .pre-commit-config.yaml
+├── Dockerfile
+├── README.md
+├── app.py                     # Точка входа Streamlit
+├── app.py.backup
+├── docker-compose.yml
+├── requirements.txt           # Зависимости
+├── test_cost_matrix_extreme.py
+├── train_450k.py
+└── train_advanced_models.py
 ```
 
 # Руководство пользователя
@@ -109,4 +123,4 @@ streamlit run app.py
 ---
 
 Разработано в рамках учебного проекта по дисциплине «Проектирование программных систем», 2026 г.
-Постоянная ссылка на репозиторий: https://github.com/yourteam/fraud-model-comparator
+Постоянная ссылка на репозиторий: 
