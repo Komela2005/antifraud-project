@@ -527,7 +527,6 @@ if reset_button:
     st.session_state.results_stress = None
     st.session_state.results_calculated = False
     st.toast("Данные сброшены. Используются синтетические данные.")
-    st.rerun()
 
 if compare_button:
     st.toast(f"Starting analysis with scenario: {selected_scenario}")
