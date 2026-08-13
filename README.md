@@ -107,4 +107,4 @@ streamlit run app.py
 ---
 
 Разработано в рамках учебного проекта по дисциплине «Проектирование программных систем», 2026 г.
-Постоянная ссылка на репозиторий: https://github.com/yourteam/fraud-model-comparator
+Постоянная ссылка на репозиторий: https://github.com/Eldrich1Herz/antifraud-project
